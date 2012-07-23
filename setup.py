@@ -15,7 +15,7 @@ setup(
 	platforms=["any"],
 	package_data={
 		"ford": [
-			"templates/*/*",
+			"templates/*/*/*",
 			"manifests/*",
 			"scripts/*"
 		]

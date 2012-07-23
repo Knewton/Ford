@@ -616,6 +616,9 @@
 				}
 
 				requiredResources = requirements[lib];
+				if (requiredResources === ".") {
+					requiredResources = [lib];
+				}
 				for (rIndex in requiredResources) {
 					if (requiredResources.hasOwnProperty(rIndex)) {
 						resource = requiredResources[rIndex];
@@ -813,6 +816,10 @@
 	 */
 	function includeLibraryResources(library, resources) {
 		var resource;
+
+		if (resources === ".") {
+			resources = [library];
+		}
 
 		if (!libraryDefinitions[library]) {
 			// This begins undefined, then we set it to null to prevent double

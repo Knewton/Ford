@@ -102,7 +102,7 @@ def split_uri(uri):
 	else:
 		protocol = "file"
 		# Handle ~ in the path
-		uri = expanduser(uri)
+		uri = realpath(expanduser(uri))
 	return protocol, uri
 
 def mime_valid(expected, ftype):
@@ -362,6 +362,8 @@ class Project(object):
 				self.held_resources[lib] = {}
 
 			req_resources = reqs[lib]
+			if req_resources == ".":
+				req_resources = [lib]
 			for resource in req_resources:
 				if not self._has_library_resource(lib, resource):
 					if not resource in self.held_resources[lib]:
@@ -464,8 +466,9 @@ class Project(object):
 			uri = "/".join([uri, fp])
 		if ftype != "images":
 			uroot, uext = splitext(uri)
-			if uext == "":
-				uri += ".{0}".format(ftype)
+			expect = ".{0}".format(ftype)
+			if uext != expect:
+				uri += expect
 
 		if ftype == "images":
 			resource_path += "/images"
@@ -638,6 +641,8 @@ class Project(object):
 			path = lib_path(lib)
 			self.libraries[lib] = get_manifest(lib_path(lib))
 			self.included[lib] = {}
+		if resources == ".":
+			resources = [lib]
 		for r in resources:
 			self._include_library_resource(lib, r)
 
@@ -649,7 +654,7 @@ class Project(object):
 			self._include_library_resources(lib, includes[lib])
 
 		if not has_resources and proceed_if_empty:
-			self._load_application_reosurces()
+			self._load_application_resources()
 
 	def _handle_project_dependencies(self):
 		self.manifest = get_manifest(self.project_dir)
@@ -674,7 +679,6 @@ class Project(object):
 		if template is None:
 			if isfile(cur_template):
 				template = read_file(cur_template)
-				print "Template is", template
 			else:
 				template = DEFAULT_TEMPLATE
 
@@ -685,7 +689,7 @@ class Project(object):
 			exit(1)
 		if merge_directories(tpl_dir, self.project_dir, None, force, True):
 			has_any = True
-		if merge_directories(SCRIPT_DIR, self.project_dir, None, force, True):
+		if merge_directories(SCRIPT_DIR, self.project_dir, None, True, True):
 			has_any = True
 		for d in PROJECT_DIRS:
 			path = join(self.project_dir, d)
