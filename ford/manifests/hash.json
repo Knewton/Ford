@@ -1,8 +1,18 @@
 {
+	"*": {
+		"uri": "git://github.com/blixt/js-hash.git"
+	},
 	"hash": {
-		"url": "https://github.com/blixt/js-hash.git",
 		"comp": {
 			"js": "Hash"
+		}
+	},
+	"jquery.hash": {
+		"comp": {
+			"js": "jquery/jquery.hash.js"
+		},
+		"reqs": {
+			"jquery": ["jquery"]
 		}
 	}
 }

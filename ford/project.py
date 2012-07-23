@@ -191,6 +191,7 @@ class Project(object):
 		self.libraries = {}
 		self.included = {}
 		self.held_resources = {}
+		self.git_paths = {}
 		self.pending_resources = 0
 		self.content = {"html": {}, "css": [], "js": []}
 		self.manifest = None
@@ -444,10 +445,14 @@ class Project(object):
 
 		if protocol == "git":
 			tmp = self._make_git()
-			repo = join(tmp, resource)
+			if uri in self.git_paths:
+				repo = self.git_paths[uri]
+			else:
+				repo = join(tmp, resource)
 			if not isdir(repo):
 				url = "://".join([protocol, uri])
 				call(["git", "clone", url, repo])
+				self.git_paths[uri] = repo
 			protocol = "file"
 			if fp is None:
 				uri = repo
@@ -503,8 +508,11 @@ class Project(object):
 				raise UpdateError(err + "Error copying file {0}: {1}".format(
 					uri, str(e)))
 
-	def _update_resource(self, lib, resource, details):
+	def _update_resource(self, lib, resource, details, base=None):
 		uri = None
+		if base is not None:
+			details.update(base)
+
 		for f in ["uri", "url", "path"]:
 			if f in details:
 				uri = details[f]
@@ -580,8 +588,12 @@ class Project(object):
 			manifest_path = "{0}/manifests/{1}.json".format(USER_DIR, lib)
 		manifest = get_json(manifest_path)
 		try:
+			base = None
+			if "*" in manifest:
+				base = manifest["*"]
+				del manifest["*"]
 			for resource in manifest:
-				self._update_resource(lib, resource, manifest[resource])
+				self._update_resource(lib, resource, manifest[resource], base)
 		except UpdateError as e:
 			print str(e)
 			exit(1)
