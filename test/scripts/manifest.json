@@ -1,0 +1,10 @@
+{
+	"includes": {
+		"screwunit": ["matchers"],
+		"test": ["test", "html2"]
+	},
+	"application": {
+		"scripts": ["app/test_script", "test"],
+		"styles": ["app/test_styles"]
+	}
+}

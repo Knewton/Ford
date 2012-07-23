@@ -16,6 +16,7 @@ def optparse():
 			"             Use --force to overwrite existing resources.",
 			"    init:    Copies project resources from a template.",
 			"             Use --force to overwrite existing resources.",
+			"             Use --template to specify a new template.",
 			"    update:  Updates external resources. Runs init first.",
 			"             Use --skip to skip init resource before build.",
 			"    build:   Builds the project. Runs init and update first.",
@@ -58,7 +59,7 @@ def main():
 		exit(0)
 
 	p = Project(directory)
-	if not opts.skip and action != "init":
+	if not opts.skip or action != "init":
 		p.init(opts.template, opts.force)
 
 	if action == "init":

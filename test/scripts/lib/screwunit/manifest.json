@@ -1,0 +1,1 @@
+{"matchers": {"comp": ["js"], "reqs": {"screwunit": ["screwunit"]}}, "screwunit": {"comp": ["js", "css"], "reqs": {"jquery": ["jquery"]}}}

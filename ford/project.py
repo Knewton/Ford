@@ -322,7 +322,6 @@ class Project(object):
 	def _make_git(self, rm=False):
 		fp = join(self.project_dir, "tmp")
 		if rm:
-			return #todo!
 			if exists(fp):
 				rmtree(fp)
 		elif not exists(fp):
@@ -343,8 +342,7 @@ class Project(object):
 					for s in app["styles"]:
 						self.content["css"].append("{0}.css".format(s))
 			self._complete()
-		if self.update_project:
-			self._clean_git()
+		self._clean_git()
 
 	def _has_library_resource(self, lib, resource):
 		if not lib in self.included:
@@ -660,8 +658,13 @@ class Project(object):
 
 	def init(self, template=None, force=False):
 		print "Ford init:"
+		cur_template = join(self.project_dir, ".template")
 		if template is None:
-			template = DEFAULT_TEMPLATE
+			if isfile(cur_template):
+				template = read_file(cur_template)
+				print "Template is", template
+			else:
+				template = DEFAULT_TEMPLATE
 
 		has_any = False
 		tpl_dir = join(USER_DIR, "templates", template)
@@ -677,6 +680,8 @@ class Project(object):
 			mkdirp(path)
 		if not has_any:
 			print "No actions."
+		else:
+			write_file(join(self.project_dir, ".template"), template)
 		print ""
 
 	#------------------------------

@@ -1,0 +1,9 @@
+{
+	"libRoot": "../lib",
+	"includes": {
+		"screwunit": ["matchers"]
+	},
+	"application": {
+		"scripts": ["test"]
+	}
+}
