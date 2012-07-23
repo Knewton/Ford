@@ -1,7 +1,6 @@
 {
 	"includes": {
-		"store": ["store"],
-		"hash": ["hash"],
+		"modernizr": ["modernizr"],
 		"jquery": ["jquery"]
 	},
 	"application": {

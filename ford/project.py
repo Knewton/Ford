@@ -42,6 +42,11 @@ PROJECT_DIRS = ["lib", "manifests"]
 #------------------------------
 
 VALID_COMPS = ["html", "css", "js", "images"]
+VALID_MIME = {
+	"js": ["application/x-javascript", "text/javascript"],
+	"css": ["text/css"],
+	"html": ["text/html"]
+}
 
 #------------------------------
 # Excptions
@@ -99,6 +104,12 @@ def split_uri(uri):
 		# Handle ~ in the path
 		uri = expanduser(uri)
 	return protocol, uri
+
+def mime_valid(expected, ftype):
+	for mime in VALID_MIME[ftype]:
+		if mime in expected:
+			return True
+	return False
 
 #------------------------------
 # HTML
@@ -472,11 +483,7 @@ class Project(object):
 			try:
 				resp = urlopen(url)
 				headers = resp.headers
-				if ftype == "js":
-					expected = "text/javascript"
-				else:
-					expected = "text/{0}".format(ftype)
-				if not expected in headers["content-type"]:
+				if not mime_valid(headers["content-type"], ftype):
 					raise UpdateError(err +"{0} ({2}) not of type {1}".format(
 						url, expected, headers["content-type"]))
 				print "{0} => {1}".format(url, dest)

@@ -1,0 +1,6 @@
+{
+	"modernizr": {
+		"uri": "//modernizr.com/downloads/",
+		"comp": ["js"]
+	}
+}
