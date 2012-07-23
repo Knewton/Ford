@@ -1,0 +1,13 @@
+{
+	"includes": {
+		"store": ["store"],
+		"hash": ["hash"],
+		"jquery": ["jquery"]
+	},
+	"application": {
+		"scripts": [
+		],
+		"styles": [
+		]
+	}
+}

@@ -1,0 +1,6 @@
+{
+	"jquery": {
+		"uri": "//ajax.googleapis.com/ajax/libs/jquery/1.7.2/",
+		"comp": ["js"]
+	}
+}
