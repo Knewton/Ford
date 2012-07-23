@@ -1,0 +1,15 @@
+{
+	"screwunit": {
+		"uri": "git://github.com/Knewton/screw-unit.git",
+		"comp": ["js", "css"]
+	},
+	"matchers": {
+		"uri": "git://github.com/Knewton/screw-unit.git",
+		"comp": {
+			"js": "screwunit_matchers"
+		},
+		"reqs": {
+			"screwunit": ["screwunit"]
+		}
+	}
+}

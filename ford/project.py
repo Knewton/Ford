@@ -451,7 +451,10 @@ class Project(object):
 				url = "://".join([protocol, uri])
 				call(["git", "clone", url, repo])
 			protocol = "file"
-			uri = join(repo, fp)
+			if fp is None:
+				uri = repo
+			else:
+				uri = join(repo, fp)
 			fp = None
 
 		if fp is not None:
@@ -556,6 +559,8 @@ class Project(object):
 					self._get(lib, resource, protocol, uri, ftype, comp[ftype])
 			details["comp"] = comps
 		else:
+			if protocol == "git":
+				append_name = True
 			for ftype in comp:
 				if not ftype in VALID_COMPS:
 					raise UpdateError(comp_err.format(ftype))
