@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 from optparse import OptionParser
 from os.path import abspath, isdir
+from os import chdir
 from sys import exit
+from ford.utilities import mkdirp
 
 from ford.project import Project, upgrade
 
@@ -41,7 +43,10 @@ def main():
 
 	if len(args) >= 2:
 		action = args[0]
-		directory = args[1]
+		d = args[1]
+		if not isdir(d):
+			mkdirp(d)
+		chdir(d)
 	elif len(args) == 1:
 		action = args[0]
 

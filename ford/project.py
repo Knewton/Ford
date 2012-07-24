@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from sys import exit
 from json import dumps, loads
-from os import makedirs, remove
+from os import makedirs, remove, symlink
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 	dirname, basename, splitext)
 from time import time
@@ -357,6 +357,12 @@ class Project(object):
 	def _missing_reqs(self, reqs, pending_lib, pending_resource):
 		missing = {}
 
+		if not hasattr(reqs, "keys"):
+			b = {}
+			for l in reqs:
+				b[l] = "."
+			reqs = b
+
 		for lib in reqs:
 			if not lib in self.held_resources:
 				self.held_resources[lib] = {}
@@ -431,7 +437,8 @@ class Project(object):
 			"requires": missing
 		}
 
-	def _get(self, lib, resource, protocol, uri, ftype, fp=None, img=None):
+	def _get(self, lib, resource, protocol, uri, ftype, fp=None, img=None,
+			link=False):
 		path = lib_path(lib)
 		resource_path = join(self.project_dir, path, resource)
 
@@ -505,8 +512,14 @@ class Project(object):
 				raise UpdateError(err + "{0} is not a file".format(uri))
 				exit(1)
 			try:
-				copyfile(uri, dest)
-				print "{0} => {1}".format(uri, dest)
+				if link:
+					if exists(dest):
+						remove(dest)
+					symlink(uri, dest)
+					print "{0} <-> {1}".format(uri, dest)
+				else:
+					copyfile(uri, dest)
+					print "{0} => {1}".format(uri, dest)
 			except IOError as e:
 				raise UpdateError(err + "Error copying file {0}: {1}".format(
 					uri, str(e)))
@@ -515,6 +528,11 @@ class Project(object):
 		uri = None
 		if base is not None:
 			details.update(base)
+
+		if "link" in details:
+			l = details["link"]
+		else:
+			l = False
 
 		for f in ["uri", "url", "path"]:
 			if f in details:
@@ -547,10 +565,10 @@ class Project(object):
 			if hasattr(imgs, "keys"):
 				for name in imgs.keys():
 					img = imgs[name]
-					self._get(lib, resource, protocol, path, i, img, name)
+					self._get(lib, resource, protocol, path, i, img, name, l)
 			else:
 				for img in imgs:
-					self._get(lib, resource, protocol, path, i, img)
+					self._get(lib, resource, protocol, path, i, img, None, l)
 
 		comp_err = "bad composition ({{0}}) for {0} resource {1}".format(lib,
 			resource)
@@ -565,7 +583,8 @@ class Project(object):
 					handle_images(comp[ftype])
 				else:
 					comps.append(ftype)
-					self._get(lib, resource, protocol, uri, ftype, comp[ftype])
+					self._get(lib, resource, protocol, uri, ftype, comp[ftype],
+						None, l)
 			details["comp"] = comps
 		else:
 			if protocol == "git":
@@ -583,7 +602,7 @@ class Project(object):
 					fp = None
 					if append_name:
 						fp = "{0}.{1}".format(resource, ftype)
-					self._get(lib, resource, protocol, uri, ftype, fp)
+					self._get(lib, resource, protocol, uri, ftype, fp, None, l)
 
 	def _update_library(self, lib):
 		manifest_path = "{0}/manifests/{1}.json".format(self.project_dir, lib)

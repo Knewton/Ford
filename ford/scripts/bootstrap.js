@@ -1,7 +1,7 @@
 /**
  * Bootstrap
  *
- * Copyright (c) 2010 Knewton
+ * Copyright (c) 2012 Knewton
  * Dual licensed under:
  *  MIT: http://www.opensource.org/licenses/mit-license.php
  *  GPLv3: http://www.opensource.org/licenses/gpl-3.0.html
@@ -607,7 +607,16 @@
 			lib,
 			requiredResources,
 			rIndex,
-			resource;
+			resource,
+			b, i;
+
+		if (requirements instanceof Array) {
+			b = {};
+			for (i in requirements) {
+				b[requirements[i]] = ".";
+			}
+			requirements = b;
+		}
 
 		for (lib in requirements) {
 			if (requirements.hasOwnProperty(lib)) {
