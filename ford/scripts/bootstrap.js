@@ -625,7 +625,7 @@
 				}
 
 				requiredResources = requirements[lib];
-				if (requiredResources === ".") {
+				if (requiredResources === "." || requiredResources === "*") {
 					requiredResources = [lib];
 				}
 				for (rIndex in requiredResources) {
@@ -826,7 +826,7 @@
 	function includeLibraryResources(library, resources) {
 		var resource;
 
-		if (resources === ".") {
+		if (resources === "." || resources === "*") {
 			resources = [library];
 		}
 

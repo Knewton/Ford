@@ -82,9 +82,6 @@ def split_uri(uri):
 	# use git for blah.com/foo.git
 	if uri[-4:] == ".git":
 		protocol = "git"
-		if "://" in uri:
-			p, uri = uri.split("://")
-		uri = uri[:-4]
 	# :// is some protocol
 	elif "://" in uri:
 		return uri.split("://")
@@ -95,7 +92,9 @@ def split_uri(uri):
 	# use git for blah.com:/foo|blah.com:foo but not foo.com:80/blah
 	elif ":" in uri:
 		url, path = uri.split(":")
-		port, fp = path.split("/")
+		parts = path.split("/")
+		port = parts.pop(0)
+		fp = "/".join(parts)
 		if not port.isdigit():
 			protocol = "git"
 	# everything else should be file
@@ -368,7 +367,7 @@ class Project(object):
 				self.held_resources[lib] = {}
 
 			req_resources = reqs[lib]
-			if req_resources == ".":
+			if req_resources in [".", "*"]:
 				req_resources = [lib]
 			for resource in req_resources:
 				if not self._has_library_resource(lib, resource):
@@ -459,8 +458,8 @@ class Project(object):
 			else:
 				repo = join(tmp, resource)
 			if not isdir(repo):
-				url = "://".join([protocol, uri])
-				call(["git", "clone", url, repo])
+				# this
+				call(["git", "clone", uri, repo])
 				self.git_paths[uri] = repo
 			protocol = "file"
 			if fp is None:
@@ -660,7 +659,7 @@ class Project(object):
 			path = lib_path(lib)
 			self.libraries[lib] = get_manifest(lib_path(lib))
 			self.included[lib] = {}
-		if resources == ".":
+		if resources in [".", "*"]:
 			resources = [lib]
 		for r in resources:
 			self._include_library_resource(lib, r)

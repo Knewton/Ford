@@ -11,8 +11,6 @@
 		"comp": {
 			"js": "jquery/jquery.hash.js"
 		},
-		"reqs": {
-			"jquery": "*"
-		}
+		"reqs": ["jquery", "hash"]
 	}
 }
