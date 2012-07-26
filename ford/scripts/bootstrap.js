@@ -43,6 +43,11 @@
 	//------------------------------
 
 		/**
+		 * Did the system pause jQuery's ready event?
+		 */
+		pause = false,
+
+		/**
 		 *	The head of this document.
 		 */
 		head = document.getElementsByTagName('head')[0],
@@ -196,6 +201,11 @@
 				}
 
 				pendingLoad = false;
+
+				if (jQuery && !jQuery.isReady && jQuery.holdReady && !pause) {
+					pause = true;
+					jQuery.holdReady(true);
+				}
 
 				if (callback !== undefined) {
 					callback.call(callback, null, "js");
@@ -508,6 +518,9 @@
 		}
 		resolveComponents();
 		window.__bootstrapped__ = true;
+		if (pause) {
+			jQuery.holdReady(false);
+		}
 		for (index = 0; index < window.onBootstrap.length; index++) {
 			window.onBootstrap[index]();
 		}
