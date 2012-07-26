@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from sys import exit
 from json import dumps, loads
-from os import makedirs, remove, symlink
+from os import makedirs, remove, symlink, getcwd, listdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 	dirname, basename, splitext)
 from time import time
@@ -555,11 +555,15 @@ class Project(object):
 
 		comp = details["comp"]
 
-		def handle_images(imgs):
+		def handle_images(imgs=None):
 			path = uri
+			if not append_name:
+				path = path[:path.rfind("/")]
 			i = "images"
-			if ftype == "images/":
-				path = "{0}/images".format(uri)
+			if ftype == "images/" or imgs is None:
+				path = "{0}/images".format(path)
+				if imgs is None:
+					imgs = listdir(path)
 
 			if hasattr(imgs, "keys"):
 				for name in imgs.keys():
@@ -593,9 +597,7 @@ class Project(object):
 					raise UpdateError(comp_err.format(ftype))
 				if ftype == "images":
 					if not "images" in details:
-						raise UpdateError(
-							"{0} resource {1} has no images".format(lib,
-								resource))
+						details["images"] = None
 					handle_images(details["images"])
 				else:
 					fp = None
