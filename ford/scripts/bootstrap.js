@@ -162,6 +162,44 @@
 	//------------------------------
 
 	/**
+	 * Takes the "&" argument from a manifest and expands it out.
+	 * @param {Array|Object} libs A list of libs.
+	 */
+	function expandLibs(libs) {
+		var lib,
+			exp,
+			b, i;
+
+		if (libs === undefined) {
+			return;
+		}
+
+		if (libs instanceof Array) {
+			b = {};
+			for (i in libs) {
+				b[libs[i]] = ".";
+			}
+			libs = b;
+		}
+
+		exp = libs["&"];
+
+		if (exp === undefined) {
+			return libs;
+		}
+
+		for (lib in exp) {
+			if (exp.hasOwnProperty(lib)) {
+				lib = exp[lib];
+				libs[lib] = ".";
+			}
+		}
+
+		delete libs["&"];
+		return libs;
+	}
+
+	/**
 	 * Returns the current unix timestamp.
 	 * @return {number} The curren time.
 	 */
@@ -202,7 +240,8 @@
 
 				pendingLoad = false;
 
-				if (jQuery && !jQuery.isReady && jQuery.holdReady && !pause) {
+				if (window.jQuery && !jQuery.isReady && jQuery.holdReady &&
+						!pause) {
 					pause = true;
 					jQuery.holdReady(true);
 				}
@@ -623,13 +662,7 @@
 			resource,
 			b, i;
 
-		if (requirements instanceof Array) {
-			b = {};
-			for (i in requirements) {
-				b[requirements[i]] = ".";
-			}
-			requirements = b;
-		}
+		requirements = expandLibs(requirements);
 
 		for (lib in requirements) {
 			if (requirements.hasOwnProperty(lib)) {
@@ -873,6 +906,8 @@
 	function loadResources(libraries, proceedIfEmpty) {
 		var lib,
 			hasAnyResources = false;
+
+		libraries = expandLibs(libraries);
 
 		for (lib in libraries) {
 			if (libraries.hasOwnProperty(lib)) {

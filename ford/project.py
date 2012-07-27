@@ -65,6 +65,21 @@ class UpdateError(Exception):
 # Generic
 #------------------------------
 
+def expand_libs(libs):
+	if not hasattr(libs, "keys"):
+		b = {}
+		for l in libs:
+			b[l] = "."
+		libs = b
+
+	if not "&" in libs:
+		return libs
+
+	for l in libs["&"]:
+		libs[l] = "."
+	del libs["&"]
+	return libs
+
 def get_json(fp):
 	if not exists(fp):
 		print "File '{0}' does not exist!".format(fp)
@@ -356,11 +371,7 @@ class Project(object):
 	def _missing_reqs(self, reqs, pending_lib, pending_resource):
 		missing = {}
 
-		if not hasattr(reqs, "keys"):
-			b = {}
-			for l in reqs:
-				b[l] = "."
-			reqs = b
+		reqs = expand_libs(reqs)
 
 		for lib in reqs:
 			if not lib in self.held_resources:
@@ -609,7 +620,12 @@ class Project(object):
 		manifest_path = "{0}/manifests/{1}.json".format(self.project_dir, lib)
 		if not exists(manifest_path):
 			manifest_path = "{0}/manifests/{1}.json".format(USER_DIR, lib)
-		manifest = get_json(manifest_path)
+		try:
+			manifest = get_json(manifest_path)
+		except:
+			print "{0} has no update manifest defined".format(lib)
+			return
+
 		try:
 			base = None
 			if "*" in manifest:
@@ -668,6 +684,8 @@ class Project(object):
 
 	def _load_resources(self, includes, proceed_if_empty=False):
 		has_resources = False
+
+		includes = expand_libs(includes)
 
 		for lib in includes:
 			has_resources = True

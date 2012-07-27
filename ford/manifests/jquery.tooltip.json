@@ -1,0 +1,7 @@
+{
+	"jquery.tooltip": {
+		"uri": "git.knewton.net:/lib/javascript/jquery.tooltip",
+		"comp": ["js"],
+		"reqs": ["jquery"]
+	}
+}

@@ -1,0 +1,7 @@
+{
+	"jquery.format": {
+		"uri": "git.knewton.net:/lib/javascript/jquery.format",
+		"comp": ["js"],
+		"reqs": ["jquery"]
+	}
+}
