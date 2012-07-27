@@ -56,6 +56,16 @@ class UpdateError(Exception):
 	pass
 
 #------------------------------
+# Custom tags
+#------------------------------
+
+# Add tags to beautifulsoup or HTML will not build properly
+CUSTOM_TAGS = ("component", "def", "sect")
+BeautifulSoup.NESTABLE_BLOCK_TAGS += CUSTOM_TAGS
+for t in CUSTOM_TAGS:
+	BeautifulSoup.NESTABLE_TAGS[t] = []
+
+#------------------------------
 #
 # Utilities
 #
