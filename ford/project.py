@@ -239,7 +239,7 @@ class Project(object):
 		if ftype == "js":
 			cmd += ["--skip-verification"]
 		elif ftype == "css":
-			cmd += ["--force-image-embed"]
+			cmd += ["--force-image-embed", "--embed-images", "data_uri"]
 		cmd += ["'{0}'".format(src_file)]
 		if call(cmd) == 0:
 			remove(src_file)
