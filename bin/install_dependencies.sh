@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-D="`realpath $0 | xargs dirname`"
+D="`dirname $0`"
 $D/setup/juicer.sh
 $D/setup/beautifulsoup.sh

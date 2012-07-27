@@ -230,7 +230,7 @@ class Project(object):
 			cmd += ["--skip-verification"]
 		elif ftype == "css":
 			cmd += ["--force-image-embed"]
-		cmd += [src_file]
+		cmd += ["'{0}'".format(src_file)]
 		if call(cmd) == 0:
 			remove(src_file)
 		else:
@@ -567,7 +567,7 @@ class Project(object):
 				repo = join(tmp, resource)
 				self.git_paths[uri] = repo
 			if not isdir(repo):
-				call(["git", "clone", uri, repo])
+				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
 
 		def handle_images(imgs=None):
 			if protocol == "git":
