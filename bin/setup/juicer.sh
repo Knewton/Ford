@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 function gem_install {
 	gem_name="$1"
 	if [[ -z `gem list | grep $gem_name` ]]; then
