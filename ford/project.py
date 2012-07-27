@@ -224,7 +224,7 @@ class Project(object):
 
 	def _compile(self, ftype):
 		cmd = ["juicer", "merge", "--force", "--document-root",
-				self.project_dir]
+				"'{0}'".format(self.project_dir)]
 		src_file = "{0}/application.{1}".format(self.output_dir, ftype)
 		if ftype == "js":
 			cmd += ["--skip-verification"]
