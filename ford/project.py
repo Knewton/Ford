@@ -261,7 +261,7 @@ class Project(object):
 			self._insert_component(c)
 		doc = BeautifulSoup(str(doc))
 		if len(doc.findAll("component")) > 0:
-			self._resolve_component_html(doc)
+			doc = self._resolve_component_html(doc)
 		return doc
 
 	def _complete(self):
@@ -631,7 +631,6 @@ class Project(object):
 		try:
 			manifest = get_json(manifest_path)
 		except:
-			print "{0} has no update manifest defined".format(lib)
 			return
 
 		try:
