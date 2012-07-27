@@ -43,9 +43,9 @@ PROJECT_DIRS = ["lib", "manifests"]
 
 VALID_COMPS = ["html", "css", "js", "images"]
 VALID_MIME = {
-	"js": ["application/x-javascript", "text/javascript"],
-	"css": ["text/css"],
-	"html": ["text/html"]
+	"js": ["text/plain", "application/x-javascript", "text/javascript"],
+	"css": ["text/plain", "text/css"],
+	"html": ["text/plain", "text/html"]
 }
 
 #------------------------------
@@ -463,15 +463,7 @@ class Project(object):
 				fp = None
 
 		if protocol == "git":
-			tmp = self._make_git()
-			if uri in self.git_paths:
-				repo = self.git_paths[uri]
-			else:
-				repo = join(tmp, resource)
-			if not isdir(repo):
-				# this
-				call(["git", "clone", uri, repo])
-				self.git_paths[uri] = repo
+			repo = self.git_paths[uri]
 			protocol = "file"
 			if fp is None:
 				uri = repo
@@ -511,7 +503,7 @@ class Project(object):
 				headers = resp.headers
 				if not mime_valid(headers["content-type"], ftype):
 					raise UpdateError(err +"{0} ({2}) not of type {1}".format(
-						url, expected, headers["content-type"]))
+						url, VALID_MIME[ftype], headers["content-type"]))
 				print "{0} => {1}".format(url, dest)
 				write_file(dest, resp.read())
 			except HTTPError as e:
@@ -521,6 +513,7 @@ class Project(object):
 			if not isfile(uri):
 				raise UpdateError(err + "{0} is not a file".format(uri))
 				exit(1)
+			mkdirp(dirname(dest))
 			try:
 				if link:
 					if exists(dest):
@@ -566,8 +559,23 @@ class Project(object):
 
 		comp = details["comp"]
 
+		if protocol == "git":
+			tmp = self._make_git()
+			if uri in self.git_paths:
+				repo = self.git_paths[uri]
+			else:
+				repo = join(tmp, resource)
+				self.git_paths[uri] = repo
+			if not isdir(repo):
+				call(["git", "clone", uri, repo])
+
 		def handle_images(imgs=None):
-			path = uri
+			if protocol == "git":
+				path = repo
+				iprotocol = "file"
+			else:
+				path = uri
+				iprotocol = protocol
 			if not append_name:
 				path = path[:path.rfind("/")]
 			i = "images"
@@ -579,10 +587,10 @@ class Project(object):
 			if hasattr(imgs, "keys"):
 				for name in imgs.keys():
 					img = imgs[name]
-					self._get(lib, resource, protocol, path, i, img, name, l)
+					self._get(lib, resource, iprotocol, path, i, img, name, l)
 			else:
 				for img in imgs:
-					self._get(lib, resource, protocol, path, i, img, None, l)
+					self._get(lib, resource, iprotocol, path, i, img, None, l)
 
 		comp_err = "bad composition ({{0}}) for {0} resource {1}".format(lib,
 			resource)

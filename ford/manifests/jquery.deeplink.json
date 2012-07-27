@@ -1,7 +1,7 @@
 {
 	"jquery.deeplink": {
 		"uri": "git.knewton.net:/lib/javascript/jquery.deeplink",
-		"comp": ["js"],
-		"reqs": ["jquery"]
+		"comp": ["js", "css"],
+		"reqs": {"hash": ["jquery.hash"]}
 	}
 }

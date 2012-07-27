@@ -1,7 +1,7 @@
 {
 	"jquery.shade": {
 		"uri": "git.knewton.net:/lib/javascript/jquery.shade",
-		"comp": ["js"],
+		"comp": ["js", "css", "images"],
 		"reqs": ["jquery"]
 	}
 }

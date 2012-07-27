@@ -1,6 +1,6 @@
 {
 	"htmlreset": {
-		"uri": "http://meyerweb.com/eric/tools/css/reset/reset",
+		"uri": "https://raw.github.com/gist/914354/f792b820ff09a3632dc50a60796564e32ac2688c/reset",
 		"comp": ["css"]
 	}
 }
