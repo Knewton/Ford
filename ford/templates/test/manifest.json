@@ -1,7 +1,6 @@
 {
 	"includes": {
-		"system_under_test": ".",
-		"screwunit": ["matchers"]
+		"system_under_test": "."
 	},
 	"application": {
 		"scripts": ["test"]

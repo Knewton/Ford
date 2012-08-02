@@ -2,9 +2,7 @@
 	"screwunit": {
 		"uri": "git://github.com/Knewton/screw-unit.git",
 		"comp": ["js", "css"],
-		"reqs": {
-			"jquery": ["jquery"]
-		}
+		"reqs": ["jquery", "system_under_test"]
 	},
 	"matchers": {
 		"uri": "git://github.com/Knewton/screw-unit.git",

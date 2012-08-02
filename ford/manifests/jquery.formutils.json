@@ -2,6 +2,7 @@
 	"jquery.formutils": {
 		"uri": "git.knewton.net:/lib/javascript/jquery.formutils",
 		"comp": ["js", "css", "images"],
-		"reqs": ["jquery.markup", "jquery.update", "jquery.api", "htmlreset"]
+		"reqs": ["jquery.markup", "jquery.update", "jquery.api", "htmlreset",
+			"jquery.validate"]
 	}
 }
