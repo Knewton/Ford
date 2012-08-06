@@ -1,0 +1,7 @@
+{
+	"jquery.deparam": {
+		"uri": "git://github.com/chrissrogers/jquery-deparam.git",
+		"comp": {"js": "jquery-deparam"},
+		"reqs": ["jquery"]
+	}
+}
