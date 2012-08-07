@@ -1,0 +1,7 @@
+{
+	"jquery.dateformat": {
+		"uri": "git://github.com/Knewton/jQuery-Dateformat.git",
+		"comp": {"js": "jquery.dateformat.js"},
+		"reqs": ["jquery"]
+	}
+}
