@@ -43,7 +43,8 @@ PROJECT_DIRS = ["lib", "manifests"]
 
 VALID_COMPS = ["html", "css", "js", "images"]
 VALID_MIME = {
-	"js": ["text/plain", "application/x-javascript", "text/javascript"],
+	"js": ["text/plain", "application/x-javascript", "text/javascript",
+		"application/javascript"],
 	"css": ["text/plain", "text/css"],
 	"html": ["text/plain", "text/html"]
 }
