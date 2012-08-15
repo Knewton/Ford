@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-BSOUP_URL="http://pypi.python.org/packages/source/B/BeautifulSoup/BeautifulSoup-3.2.1.tar.gz"
+BSOUP_URL="http://pypi.python.org/packages/source/B/BeautifulSoup/BeautifulSoup-3.2.0.tar.gz"
 
 python -c "import BeautifulSoup" > /dev/null 2>&1
 if [[ $? -ne 0 ]]; then
