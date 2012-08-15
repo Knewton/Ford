@@ -1,0 +1,7 @@
+{
+	"jquery.flip": {
+		"uri": "git://github.com/roncioso/Flip-jQuery.git",
+		"comp": ["js"],
+		"reqs": ["jquery-ui"]
+	}
+}
