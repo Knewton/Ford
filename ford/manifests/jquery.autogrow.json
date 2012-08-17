@@ -1,0 +1,7 @@
+{
+	"jquery.autogrow": {
+		"uri": "git://github.com/akaihola/jquery-autogrow.git",
+		"comp": ["js"],
+		"reqs": ["jquery"]
+	}
+}
