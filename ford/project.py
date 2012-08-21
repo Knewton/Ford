@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 from sys import exit
 from json import dumps, loads
-from os import makedirs, remove, symlink, getcwd, listdir
+from os import makedirs, remove, symlink, getcwd, listdir, chdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
-	dirname, basename, splitext)
+	dirname, basename, splitext, split)
 from time import time
 from shutil import copyfile, copytree, rmtree
 from BeautifulSoup import BeautifulSoup, Tag
@@ -135,6 +135,44 @@ def mime_valid(expected, ftype):
 		if mime in expected:
 			return True
 	return False
+
+# Author: Cimarron Taylor
+# Date: July 6, 2003
+# File Name: relpath.py
+# Program Description: Print relative path from /a/b/c/d to /a/b/c1/d1
+
+def pathsplit(p, rest=[]):
+	(h,t) = split(p)
+	if len(h) < 1: return [t]+rest
+	if len(t) < 1: return [h]+rest
+	return pathsplit(h,[t]+rest)
+
+def commonpath(l1, l2, common=[]):
+	if len(l1) < 1: return (common, l1, l2)
+	if len(l2) < 1: return (common, l1, l2)
+	if l1[0] != l2[0]: return (common, l1, l2)
+	return commonpath(l1[1:], l2[1:], common+[l1[0]])
+
+def relpath(p1, p2):
+	(common,l1,l2) = commonpath(pathsplit(p1), pathsplit(p2))
+	p = []
+	if len(l1) > 0:
+		p = [ '../' * (len(l1) - 1) ] # Was adding one too many for pathing
+	p = p + l2
+	return join( *p )
+
+def relative_symlink(uri, dest):
+	cur = getcwd()
+	d = dirname(dest)
+	n = basename(dest)
+	r = relpath(dest, uri)
+
+	print "{0} <-> {1} (Symlinked in {2} as {3})".format(uri, dest, r, n)
+
+	chdir(d)
+	symlink(r, n)
+	chdir(cur)
+
 
 #------------------------------
 # HTML
@@ -527,10 +565,12 @@ class Project(object):
 			mkdirp(dirname(dest))
 			try:
 				if link:
-					if exists(dest):
+					try:
 						remove(dest)
-					symlink(uri, dest)
-					print "{0} <-> {1}".format(uri, dest)
+						print "Removing {0}".format(dest)
+					except OSError:
+						pass
+					relative_symlink(uri, dest)
 				else:
 					copyfile(uri, dest)
 					print "{0} => {1}".format(uri, dest)
