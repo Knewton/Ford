@@ -30,7 +30,7 @@
 		 * Image path replacement.
 		 * @type {RegExp}
 		 */
-		RX_IMAGE = /url\(images\/(.*)+\)/g,
+		RX_IMAGE = /url\(["']?images\/([^'")]*)["']?\)/g,
 
 	//------------------------------
 	//

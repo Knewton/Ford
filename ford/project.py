@@ -663,17 +663,19 @@ class Project(object):
 			if protocol == "git":
 				append_name = True
 			for ftype in comp:
-				if not ftype in VALID_COMPS:
+				if not ftype in VALID_COMPS and ftype != "images/":
 					raise UpdateError(comp_err.format(ftype))
-				if ftype == "images":
+				if ftype in ["images", "images/"]:
 					if not "images" in details:
 						details["images"] = None
 					handle_images(details["images"])
+					del details["images"]
 				else:
 					fp = None
 					if append_name:
 						fp = "{0}.{1}".format(resource, ftype)
 					self._get(lib, resource, protocol, uri, ftype, fp, None, l)
+			details["comp"] = [x if x != "images/" else "images" for x in comp]
 
 	def _update_library(self, lib):
 		manifest_path = "{0}/manifests/{1}.json".format(self.project_dir, lib)
