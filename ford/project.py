@@ -9,6 +9,7 @@ from shutil import copyfile, copytree, rmtree
 from BeautifulSoup import BeautifulSoup, Tag
 from utilities import mkdirp, read_file, write_file, call, merge_directories
 from urllib2 import urlopen, HTTPError
+from pprint import pprint
 
 #------------------------------
 #
@@ -22,6 +23,14 @@ from urllib2 import urlopen, HTTPError
 
 USER_DIR = expanduser("~/.ford")
 SCRIPT_DIR = join(USER_DIR, "scripts")
+
+#------------------------------
+# Import: CDNJS
+#------------------------------
+
+CDNJS_URL = "http://cdnjs.cloudflare.com/ajax/libs/{}/{}/{}"
+CDNJS_CACHE = join(USER_DIR, "cdnjs.com.packages.json")
+CDNJS_REPO = "http://cdnjs.com/packages.json"
 
 #------------------------------
 # Upgrade
@@ -173,6 +182,38 @@ def relative_symlink(uri, dest):
 	symlink(r, n)
 	chdir(cur)
 
+#------------------------------
+# CDNJS import
+#------------------------------
+
+def cdnimport(force):
+	if force and isfile(CDNJS_CACHE):
+		remove(CDNJS_CACHE)
+
+	if not isfile(CDNJS_CACHE):
+		print "Fetching package listing from {}".format(CDNJS_REPO)
+		resp = urlopen(CDNJS_REPO)
+		headers = resp.headers
+		packages = resp.read()
+		if headers["content-type"] != "application/json":
+			raise UpdateError("Unexpected content type for CDN packages")
+		write_file(CDNJS_CACHE, packages)
+		packages = loads(packages)
+	else:
+		packages = get_json(CDNJS_CACHE)
+
+	for p in packages["packages"]:
+		if not "name" in p:
+			continue
+		print "Imported {} ({})".format(p["name"], p["version"])
+		manifest = {}
+		manifest[p["name"]] = {
+			"comp": ["js"],
+			"uri": CDNJS_URL.format(p["name"], p["version"], p["filename"])
+		}
+		resource_path = join(USER_DIR, "manifests",
+				"{}.json".format(p["name"]))
+		write_file(resource_path, dumps(manifest))
 
 #------------------------------
 # HTML

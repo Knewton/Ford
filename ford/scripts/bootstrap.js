@@ -43,6 +43,12 @@
 	//------------------------------
 
 		/**
+		 * Have all resources been processed?
+		 * @type {boolean}
+		 */
+		allResourcesProcessed = false,
+
+		/**
 		 * Did the system pause jQuery's ready event?
 		 */
 		pause = false,
@@ -593,10 +599,30 @@
 		}
 	}
 
+	function missingLibs() {
+		var missing = false,
+			lib;
+
+		for (lib in libraryDefinitions) {
+			if (libraryDefinitions.hasOwnProperty(lib)) {
+				if (libraryDefinitions[lib] === null) {
+					missing = true;
+					return false;
+				}
+			}
+		}
+
+		return missing;
+	}
+
 	/**
 	 * Includes application resources.
 	 */
 	function loadApplicationResources() {
+		if (!allResourcesProcessed || missingLibs()) {
+			return;
+		}
+
 		var app,
 			sIndex;
 		if (applicationManifest.application !== undefined) {
@@ -915,6 +941,8 @@
 				includeLibraryResources(lib, libraries[lib]);
 			}
 		}
+
+		allResourcesProcessed = true;
 
 		if (!hasAnyResources && Boolean(proceedIfEmpty)) {
 			loadApplicationResources();

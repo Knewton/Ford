@@ -5,7 +5,7 @@ from os import chdir
 from sys import exit
 from ford.utilities import mkdirp
 
-from ford.project import Project, upgrade
+from ford.project import Project, upgrade, cdnimport
 
 SUPPORTED_ACTIONS = ["upgrade", "init", "update", "build"]
 
@@ -14,6 +14,9 @@ def optparse():
 			"A development and build tool for javascript applications.",
 			"",
 			"Supported actions:",
+			"    import:  Pulls in all the packages hosted on CDNJS as ford",
+			"             ready manifests for import. Use --force to update",
+			"             the cached package listing from cdnjs.com",
 			"    upgrade: Upgrades the current user's ford resources.",
 			"             Use --force to overwrite existing resources.",
 			"    init:    Copies project resources from a template.",
@@ -56,6 +59,9 @@ def main():
 		exit(0)
 	elif action == "upgrade":
 		upgrade(opts.force)
+		exit(0)
+	elif action == "import":
+		cdnimport(opts.force)
 		exit(0)
 
 	if not action in SUPPORTED_ACTIONS:
