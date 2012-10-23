@@ -3,7 +3,7 @@ from sys import exit
 from json import dumps, loads
 from os import makedirs, remove, symlink, getcwd, listdir, chdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
-	dirname, basename, splitext, split)
+	dirname, basename, splitext, split, normpath)
 from time import time
 from shutil import copyfile, copytree, rmtree
 from BeautifulSoup import BeautifulSoup, Tag
@@ -55,7 +55,8 @@ VALID_MIME = {
 	"js": ["text/plain", "application/x-javascript", "text/javascript",
 		"application/javascript"],
 	"css": ["text/plain", "text/css"],
-	"html": ["text/plain", "text/html"]
+	"html": ["text/plain", "text/html"],
+	"zip": ["application/zip"]
 }
 
 #------------------------------
@@ -145,6 +146,19 @@ def mime_valid(expected, ftype):
 			return True
 	return False
 
+def wget(url, ftype, dest):
+	try:
+		resp = urlopen(url)
+		headers = resp.headers
+		if not mime_valid(headers["content-type"], ftype):
+			raise UpdateError("{0} ({2}) not of type {1}".format(url,
+				VALID_MIME[ftype], headers["content-type"]))
+		print "{0} => {1}".format(url, dest)
+		write_file(dest, resp.read())
+	except HTTPError as e:
+		raise UpdateError("{0} ({1})".format(str(e), url))
+		exit(1)
+
 # Author: Cimarron Taylor
 # Date: July 6, 2003
 # File Name: relpath.py
@@ -181,6 +195,37 @@ def relative_symlink(uri, dest):
 	chdir(d)
 	symlink(r, n)
 	chdir(cur)
+
+#------------------------------
+# Unpackage support
+#------------------------------
+
+def unzip(dest):
+	# From http://webhelp.esri.com/arcgisserver/9.3/
+	from zipfile import ZipFile
+
+	dn, dx = splitext(basename(dest))
+	bd = join(dirname(dest), dn)
+
+	if not isdir(bd):
+		makedirs(bd)
+
+	z = ZipFile(dest, "r")
+	for f in z.namelist():
+		if not f.endswith("/"):
+			print "Extracting {0}...".format(f)
+			r, n = split(f)
+			d = normpath(join(bd, r))
+			if not isdir(d):
+				makedirs(d)
+			write_file(join(d, n), z.read(f))
+	z.close()
+	return bd
+
+def unpackage(pt, fp):
+	if pt == "zip":
+		print "Unzipping {0}...".format(fp)
+		return unzip(fp)
 
 #------------------------------
 # CDNJS import
@@ -294,8 +339,9 @@ class Project(object):
 		self.output_dir = None
 		self.libraries = {}
 		self.included = {}
+		self.unpacked = {}
 		self.held_resources = {}
-		self.git_paths = {}
+		self.tmp_paths = {}
 		self.pending_resources = 0
 		self.content = {"html": {}, "css": [], "js": []}
 		self.manifest = None
@@ -424,17 +470,26 @@ class Project(object):
 	# Dependency management
 	#------------------------------
 
-	def _make_git(self, rm=False):
+	def _make_tmp(self, uri=None, rsc=None, rm=False):
 		fp = join(self.project_dir, "tmp")
 		if rm:
 			if exists(fp):
 				rmtree(fp)
 		elif not exists(fp):
 			mkdirp(fp)
+
+		if uri is not None:
+			if uri in self.tmp_paths:
+				repo = self.tmp_paths[uri]
+			else:
+				repo = join(fp, rsc)
+				self.tmp_paths[uri] = repo
+			fp = repo
+
 		return fp
 
-	def _clean_git(self):
-		self._make_git(True)
+	def _clean_tmp(self):
+		self._make_tmp(rm=True)
 
 	def _load_application_resources(self):
 		if self.build_project:
@@ -447,7 +502,7 @@ class Project(object):
 					for s in app["styles"]:
 						self.content["css"].append("{0}.css".format(s))
 			self._complete()
-		self._clean_git()
+		self._clean_tmp()
 
 	def _has_library_resource(self, lib, resource):
 		if not lib in self.included:
@@ -553,7 +608,7 @@ class Project(object):
 				fp = None
 
 		if protocol == "git":
-			repo = self.git_paths[uri]
+			repo = self.tmp_paths[uri]
 			protocol = "file"
 			if fp is None:
 				uri = repo
@@ -588,17 +643,7 @@ class Project(object):
 		dest = join(resource_path, fname)
 		if protocol in ["http", "https"]:
 			url = "://".join([protocol, uri])
-			try:
-				resp = urlopen(url)
-				headers = resp.headers
-				if not mime_valid(headers["content-type"], ftype):
-					raise UpdateError(err +"{0} ({2}) not of type {1}".format(
-						url, VALID_MIME[ftype], headers["content-type"]))
-				print "{0} => {1}".format(url, dest)
-				write_file(dest, resp.read())
-			except HTTPError as e:
-				raise UpdateError(err + "{0} ({1})".format(str(e), url))
-				exit(1)
+			wget(url, ftype, dest)
 		elif protocol == "file":
 			if not isfile(uri):
 				raise UpdateError(err + "{0} is not a file".format(uri))
@@ -618,6 +663,7 @@ class Project(object):
 			except IOError as e:
 				raise UpdateError(err + "Error copying file {0}: {1}".format(
 					uri, str(e)))
+		return dest
 
 	def _update_resource(self, lib, resource, details, base=None):
 		uri = None
@@ -652,14 +698,21 @@ class Project(object):
 		comp = details["comp"]
 
 		if protocol == "git":
-			tmp = self._make_git()
-			if uri in self.git_paths:
-				repo = self.git_paths[uri]
-			else:
-				repo = join(tmp, resource)
-				self.git_paths[uri] = repo
+			repo = self._make_tmp(uri, resource)
 			if not isdir(repo):
 				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
+
+		if protocol in ["http", "https"] and "packaged" in details:
+			url = "://".join([protocol, uri])
+			protocol = "file"
+			dest = self._make_tmp(uri, lib) + ".pkg"
+			if not dest in self.unpacked:
+				wget(url, details["packaged"], dest)
+				self.unpacked[dest] = unpackage(details["packaged"], dest)
+			uri = self.unpacked[dest]
+			append_name = True
+			if "root" in details:
+				uri = join(uri, details["root"])
 
 		def handle_images(imgs=None):
 			if protocol == "git":
@@ -687,6 +740,17 @@ class Project(object):
 		comp_err = "bad composition ({{0}}) for {0} resource {1}".format(lib,
 			resource)
 
+		def cleanup(df, ft, dt):
+			# Cleans up destination files
+			if ft == "css" and "cssImageFix" in dt:
+				fix = dt["cssImageFix"]
+				fc = read_file(df)
+				if isinstance(fix, basestring) or isinstance(fix, str):
+					fix = [fix]
+				for fx in fix:
+					fc = fc.replace(fx, "images")
+				write_file(df, fc)
+
 		if hasattr(comp, "keys"):
 			comps = []
 			for ftype in comp.keys():
@@ -697,8 +761,9 @@ class Project(object):
 					handle_images(comp[ftype])
 				else:
 					comps.append(ftype)
-					self._get(lib, resource, protocol, uri, ftype, comp[ftype],
-						None, l)
+					df = self._get(lib, resource, protocol, uri, ftype,
+							comp[ftype], None, l)
+					cleanup(df, ftype, details)
 			details["comp"] = comps
 		else:
 			if protocol == "git":
@@ -715,7 +780,9 @@ class Project(object):
 					fp = None
 					if append_name:
 						fp = "{0}.{1}".format(resource, ftype)
-					self._get(lib, resource, protocol, uri, ftype, fp, None, l)
+					df = self._get(lib, resource, protocol, uri, ftype, fp,
+							None, l)
+					cleanup(df, ftype, details)
 			details["comp"] = [x if x != "images/" else "images" for x in comp]
 
 	def _update_library(self, lib):

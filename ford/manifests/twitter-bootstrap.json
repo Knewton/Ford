@@ -1,0 +1,26 @@
+{
+	"*": {
+		"uri": "http://twitter.github.com/bootstrap/assets/bootstrap.zip",
+		"packaged": "zip",
+		"root": "bootstrap"
+	},
+	"twitter-bootstrap": {
+		"comp": {
+			"js": "js/bootstrap",
+			"css": "css/bootstrap",
+			"images": [
+				"img/glyphicons-halflings.png",
+				"img/glyphicons-halflings-white.png"
+			]
+		},
+		"cssImageFix": "../img"
+	},
+	"responsive": {
+		"comp": {
+			"css": "css/bootstrap-responsive"
+		},
+		"reqs": {
+			"&": ["twitter-bootstrap"]
+		}
+	}
+}

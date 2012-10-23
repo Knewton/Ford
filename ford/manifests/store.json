@@ -1,8 +1,6 @@
 {
 	"store": {
-		"uri": "git://github.com/frankkohlhepp/store-js.git",
-		"comp": {
-			"js": "source/"
-		}
+		"uri": "git@github.com:Knewton/Store-js.git",
+		"comp": ["js"]
 	}
 }
