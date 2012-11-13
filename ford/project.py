@@ -751,6 +751,8 @@ class Project(object):
 					fc = fc.replace(fx, "images")
 				write_file(df, fc)
 
+		if protocol == "git":
+			append_name = True
 		if hasattr(comp, "keys"):
 			comps = []
 			for ftype in comp.keys():
@@ -766,8 +768,6 @@ class Project(object):
 					cleanup(df, ftype, details)
 			details["comp"] = comps
 		else:
-			if protocol == "git":
-				append_name = True
 			for ftype in comp:
 				if not ftype in VALID_COMPS and ftype != "images/":
 					raise UpdateError(comp_err.format(ftype))
