@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# This script is a simple web installer for the Ford builder.
+# This is a very poor implementation of this script; and needs features
+# badly.
+# Currently just a proof of concept which will be upgraded in the near future
+
 # Location of the Ford archive
 zip_url="https://nodeload.github.com/Knewton/Ford/zip/master"
 ford_dir="ford$(date +%s)"
@@ -10,7 +15,7 @@ ford_path=`which ford`
 has_ford=$?
 
 # Determine if the system already has ford installed
-if [[ $has_ford -eq 0 ]]; then
+if [ $has_ford -eq 0 ]; then
 	echo "Ford already installed"
 
 	echo ""
@@ -44,7 +49,7 @@ ford_path=`which ford`
 has_ford=$?
 
 # Setup ford
-if [[ $has_ford -eq 0 ]]; then
+if [ $has_ford -eq 0 ]; then
 	echo "Ford installed successfully; setting up..." | tee -a $ford_log
 	ford upgrade >> $ford_log 2>&1
 	ford import -f >> $ford_log 2>&1
