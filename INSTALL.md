@@ -10,6 +10,6 @@
 
 	$ bin/install_dependencies.sh
 	$ sudo python setup.py install
-    $ ford import -f
     $ ford upgrade
+    $ ford import -f
 

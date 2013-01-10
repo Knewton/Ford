@@ -10,7 +10,7 @@ ford_path=`which ford`
 has_ford=$?
 
 # Determine if the system already has ford installed
-if [[ $has_ford ]]; then
+if [[ $has_ford -eq 0 ]]; then
 	echo "Ford already installed"
 
 	echo ""
@@ -44,10 +44,10 @@ ford_path=`which ford`
 has_ford=$?
 
 # Setup ford
-if [[ $has_ford ]]; then
+if [[ $has_ford -eq 0 ]]; then
 	echo "Ford installed successfully; setting up..." | tee -a $ford_log
-	ford import -f >> $ford_log 2>&1
 	ford upgrade >> $ford_log 2>&1
+	ford import -f >> $ford_log 2>&1
 else
 	echo "Error installing ford. Check $ford_log for details."
 	exit 1
