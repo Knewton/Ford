@@ -56,7 +56,8 @@ VALID_MIME = {
 		"application/javascript"],
 	"css": ["text/plain", "text/css"],
 	"html": ["text/plain", "text/html"],
-	"zip": ["application/zip"]
+	"zip": ["application/zip"],
+	"images": ["image/png"]
 }
 
 #------------------------------
