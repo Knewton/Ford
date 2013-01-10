@@ -4,6 +4,8 @@
 
 # Instructions
 
+    $ curl https://raw.github.com/Knewton/Ford/master/web_install.sh | sh
+
 *Don't forget to run the "upgrade" after an install!*
 
 	$ bin/install_dependencies.sh
