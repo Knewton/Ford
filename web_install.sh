@@ -361,7 +361,7 @@ ConfirmInstall() {
 	DisplaySoftwareInformation
 
 	printf "\nContinue with $wi_name $_wi_action? [Y/n]: "
-	read user_confirmation
+	read user_confirmation < /dev/tty
 
 	if [ "$user_confirmation" = "n" ]; then
 		return 1
@@ -377,7 +377,7 @@ ConfirmInstall() {
 #------------------------------
 
 #------------------------------
-# Remote Reinstallation
+# curl | sh handler
 #------------------------------
 
 if [ "x$0" = "xsh" ]; then
