@@ -15,7 +15,7 @@
 
 #------------------------------
 #
-# Configurtations
+# Configurations
 #
 #------------------------------
 
@@ -32,7 +32,7 @@ wi_name="Ford"
 # The copyright years and holder, without the (c) which is added when displayed
 wi_copyright="2012 Knewton"
 
-# The license name and a URL to the license text;
+# The license name and a URL to the license text
 wi_license="MIT: http://opensource.org/licenses/MIT"
 
 #------------------------------
@@ -172,15 +172,6 @@ UpdateSoftware() {
 	Capture ford import -f
 
 	return 0
-}
-
-#------------------------------
-# Response
-#------------------------------
-
-# Used to display usage information for the software when installed
-DisplayUsage() {
-	ford -h
 }
 
 ################################## Internal ###################################
@@ -460,7 +451,7 @@ fi
 if [ $_wi_installed -ne 1 ]; then
 	if [ -n "$wi_usage" ]; then
 		echo "\nUsage instructions: $wi_usage\n"
-		DisplayUsage
+		`$wi_usage`
 	fi
 fi
 
