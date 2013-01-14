@@ -130,7 +130,7 @@ CanInstallSoftware() {
 InstallSoftware() {
 	ret=0
 
-	Fetch "ford.zip" "$ford_zip" ; got_pkg=$?
+	Fetch "$ford_zip" "ford.zip" ; got_pkg=$?
 	if [ $got_pkg -eq 0 ]; then
 		Capture unzip ford.zip ; did_unzip=$?
 		if [ $did_unzip -eq 0 ]; then
