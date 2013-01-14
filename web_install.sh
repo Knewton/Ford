@@ -23,6 +23,9 @@
 # About: required
 #------------------------------
 
+# The permanant web URL of the most up-to-date raw text version of this script.
+wi_uri="https://raw.github.com/Knewton/Ford/master/web_install.sh"
+
 # The name of your software.
 wi_name="Ford"
 
