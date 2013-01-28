@@ -1,12 +1,5 @@
 {
 	"includes": {
-		"modernizr": ["modernizr"],
-		"jquery": ["jquery"]
-	},
-	"application": {
-		"scripts": [
-		],
-		"styles": [
-		]
+		"&": ["modernizr", "jquery"]
 	}
 }
