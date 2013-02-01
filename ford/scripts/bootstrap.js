@@ -168,13 +168,27 @@
 	//------------------------------
 
 	/**
+	 * Takes the ["foo.", ["a", "b"]] shorthand and expands it into the
+	 * object provided as {foo.a: ".", foo.b: "."} which includes each.
+	 * @param {Array} shorthand The ["foo.", ["a", "b"]] shorthand array.
+	 * @param {Object} obj The object to put the names into as dot includes.
+	 */
+	function expandNamespace(shorthand, obj) {
+		var i;
+
+		for (i = 0; i < shorthand[1].length; i++) {
+			obj[shorthand[0] + shorthand[1][i]] = ".";
+		}
+	}
+
+	/**
 	 * Takes the "&" argument from a manifest and expands it out.
 	 * @param {Array|Object} libs A list of libs.
 	 */
 	function expandLibs(libs) {
 		var lib,
 			exp,
-			b, i;
+			b, i, l;
 
 		if (libs === undefined) {
 			return;
@@ -183,25 +197,33 @@
 		if (libs instanceof Array) {
 			b = {};
 			for (i in libs) {
-				b[libs[i]] = ".";
+				l = libs[i];
+				if (l instanceof Array) {
+					expandNamespace(l, b);
+				} else {
+					b[libs[i]] = ".";
+				}
 			}
 			libs = b;
 		}
 
 		exp = libs["&"];
 
-		if (exp === undefined) {
-			return libs;
-		}
-
-		for (lib in exp) {
-			if (exp.hasOwnProperty(lib)) {
-				lib = exp[lib];
-				libs[lib] = ".";
+		if (exp !== undefined) {
+			for (lib in exp) {
+				if (exp.hasOwnProperty(lib)) {
+					lib = exp[lib];
+					if (lib instanceof Array) {
+						expandNamespace(lib, libs);
+					} else {
+						libs[lib] = ".";
+					}
+				}
 			}
+
+			delete libs["&"];
 		}
 
-		delete libs["&"];
 		return libs;
 	}
 
