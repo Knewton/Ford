@@ -201,7 +201,7 @@
 				if (l instanceof Array) {
 					expandNamespace(l, b);
 				} else {
-					b[libs[i]] = ".";
+					b[l] = ".";
 				}
 			}
 			libs = b;
@@ -699,7 +699,7 @@
 	 * @param {string} pendingResource The resource pending loading.
 	 * @return {Object<string, *>} The missing requirements object.
 	 */
-	function missingRequirements(requirements, pendingLib, pendingResource) {
+	function missingrequirements(requirements, pendingLib, pendingResource) {
 		var missing = {
 				length: 0,
 				resources: {}
@@ -714,11 +714,16 @@
 
 		for (lib in requirements) {
 			if (requirements.hasOwnProperty(lib)) {
+				requiredResources = requirements[lib];
+
+				// In reqs, a 'dot' as a project name means 'use my project'
+				if (lib === ".") {
+					lib = pendingLib;
+				}
 				if (heldResources[lib] === undefined) {
 					heldResources[lib] = {};
 				}
 
-				requiredResources = requirements[lib];
 				if (requiredResources === "." || requiredResources === "*") {
 					requiredResources = [lib];
 				}
@@ -892,7 +897,7 @@
 			includedResources[library][resource] = {
 				included: false,
 				loading: false,
-				requires: missingRequirements(definition.reqs, library,
+				requires: missingrequirements(definition.reqs, library,
 												resource)
 			};
 			pendingResources += 1;

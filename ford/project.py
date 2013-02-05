@@ -539,10 +539,15 @@ class Project(object):
 		reqs = expand_libs(reqs)
 
 		for lib in reqs:
+			req_resources = reqs[lib]
+
+			# In reqs, a 'dot' as a project name means 'use my project'
+			if lib == ".":
+				lib = pending_lib
+
 			if not lib in self.held_resources:
 				self.held_resources[lib] = {}
 
-			req_resources = reqs[lib]
 			if req_resources in [".", "*"]:
 				req_resources = [lib]
 			for resource in req_resources:
