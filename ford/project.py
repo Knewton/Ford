@@ -706,6 +706,7 @@ class Project(object):
 				del details[f]
 				break
 
+		lib_target = None
 		append_name = False
 		if uri is None:
 			protocol, uri = "http", ""
@@ -716,14 +717,14 @@ class Project(object):
 				append_name = True
 				uri = uri[:-1]
 
-		if not "comp" in details:
-			print "No comp for {0} resource {1}".format(lib, resource)
-			exit(1)
-
-		comp = details["comp"]
+		full_library = False
+		if resource == ".":
+			full_library = True
+			resource = lib
 
 		if protocol == "git":
 			repo = self._make_tmp(uri, resource)
+			lib_target = repo
 			if not isdir(repo):
 				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
 
@@ -738,6 +739,24 @@ class Project(object):
 			append_name = True
 			if "root" in details:
 				uri = join(uri, details["root"])
+			lib_target = uri
+
+		if full_library:
+			if lib_target is None:
+				raise UpdateError("Can't checkout full library {}".format(lib))
+			full_lib_path = lib_path(lib)
+			full_lib_dest = join(self.project_dir, full_lib_path)
+			if isdir(full_lib_dest):
+				rmtree(full_lib_dest)
+			print lib_target, "==>", full_lib_dest
+			copytree(lib_target, full_lib_dest)
+			return
+
+		if not "comp" in details:
+			print "No comp for {0} resource {1}".format(lib, resource)
+			exit(1)
+
+		comp = details["comp"]
 
 		def handle_images(imgs=None):
 			if protocol == "git":
@@ -819,11 +838,14 @@ class Project(object):
 		except:
 			return
 
+		write_manifest = True
 		try:
 			base = None
 			if "*" in manifest:
 				base = manifest["*"]
 				del manifest["*"]
+			if "." in manifest:
+				write_manifest = False
 			for resource in manifest:
 				self._update_resource(lib, resource, manifest[resource], base)
 		except UpdateError as e:
@@ -831,7 +853,9 @@ class Project(object):
 			exit(1)
 
 		lib_manifest = join(self.project_dir, lib_path(lib), "manifest.json")
-		write_file(lib_manifest, dumps(manifest))
+		if write_manifest:
+			write_file(lib_manifest, dumps(manifest))
+		return lib_manifest
 
 	def _include_library_resource(self, lib, resource):
 		manifest = self.libraries[lib]
