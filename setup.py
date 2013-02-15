@@ -16,7 +16,6 @@ setup(
 	package_data={
 		"ford": [
 			"templates/*/*/*",
-			"manifests/*",
 			"scripts/*"
 		]
 	},

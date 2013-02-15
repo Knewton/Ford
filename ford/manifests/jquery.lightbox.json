@@ -1,7 +1,0 @@
-{
-	"jquery.lightbox": {
-		"uri": "git.knewton.net:/lib/javascript/jquery.lightbox",
-		"comp": ["js", "css", "images/"],
-		"reqs": [["jquery.", ["markup", "update"]]]
-	}
-}

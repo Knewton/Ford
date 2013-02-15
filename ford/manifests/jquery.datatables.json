@@ -1,7 +1,0 @@
-{
-	"jquery.datatables": {
-		"uri": "http://datatables.net/download/build/",
-		"comp": {"js": "jquery.dataTables"},
-		"reqs": ["jquery"]
-	}
-}

@@ -7,7 +7,8 @@ from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 from time import time
 from shutil import copyfile, copytree, rmtree
 from BeautifulSoup import BeautifulSoup, Tag
-from utilities import mkdirp, read_file, write_file, call, merge_directories
+from utilities import (mkdirp, read_file, write_file, call, merge_directories,
+	fix_path, unpackage)
 from urllib2 import urlopen, HTTPError
 from pprint import pprint
 
@@ -25,6 +26,13 @@ USER_DIR = expanduser("~/.ford")
 SCRIPT_DIR = join(USER_DIR, "scripts")
 
 #------------------------------
+# Import: Standard
+#------------------------------
+
+EXT_MANIFESTS = "https://github.com/Knewton/Ford-Manifests/archive/master.zip"
+EXT_MANIFEST_DIR = "Ford-Manifests-master"
+
+#------------------------------
 # Import: CDNJS
 #------------------------------
 
@@ -37,7 +45,7 @@ CDNJS_REPO = "http://cdnjs.com/packages.json"
 #------------------------------
 
 SRC_DIR = dirname(__file__)
-TARGETS = ["templates", "manifests", "scripts"]
+TARGETS = ["templates", "scripts"]
 
 #------------------------------
 # Init
@@ -207,37 +215,6 @@ def relative_symlink(uri, dest):
 	chdir(cur)
 
 #------------------------------
-# Unpackage support
-#------------------------------
-
-def unzip(dest):
-	# From http://webhelp.esri.com/arcgisserver/9.3/
-	from zipfile import ZipFile
-
-	dn, dx = splitext(basename(dest))
-	bd = join(dirname(dest), dn)
-
-	if not isdir(bd):
-		makedirs(bd)
-
-	z = ZipFile(dest, "r")
-	for f in z.namelist():
-		if not f.endswith("/"):
-			print "Extracting {0}...".format(f)
-			r, n = split(f)
-			d = normpath(join(bd, r))
-			if not isdir(d):
-				makedirs(d)
-			write_file(join(d, n), z.read(f))
-	z.close()
-	return bd
-
-def unpackage(pt, fp):
-	if pt == "zip":
-		print "Unzipping {0}...".format(fp)
-		return unzip(fp)
-
-#------------------------------
 # CDNJS import
 #------------------------------
 
@@ -333,10 +310,31 @@ def lib_path(lib):
 #
 #------------------------------
 
+def get_external_manifests(force=False):
+	dest = fix_path("~/.ford/ext_ford_manifests.zip")
+	wget(EXT_MANIFESTS, "zip", dest)
+	manifests = unpackage(dest)
+	src = "~/.ford/ext_ford_manifests/{}".format(EXT_MANIFEST_DIR)
+	ret = merge_directories(src, "~/.ford/manifests", None, force)
+
+	remove(dest)
+	rmtree(manifests)
+
+	return ret
+
 def upgrade(force=False):
 	print "Ford upgrade:"
-	if not merge_directories(SRC_DIR, "~/.ford", TARGETS, force):
+	upgraded = False
+
+	if merge_directories(SRC_DIR, "~/.ford", TARGETS, force):
+		upgraded = True
+
+	if get_external_manifests(force):
+		upgraded = True
+
+	if not upgraded:
 		print "Nothing upgraded."
+
 	print ""
 
 #------------------------------
@@ -734,7 +732,7 @@ class Project(object):
 			dest = self._make_tmp(uri, lib) + ".pkg"
 			if not dest in self.unpacked:
 				wget(url, details["packaged"], dest)
-				self.unpacked[dest] = unpackage(details["packaged"], dest)
+				self.unpacked[dest] = unpackage(dest)
 			uri = self.unpacked[dest]
 			append_name = True
 			if "root" in details:
@@ -928,15 +926,18 @@ class Project(object):
 	# Init
 	#------------------------------
 
-	def init(self, template=None, force=False):
-		print "Ford init:"
+	def init(self, template=None, force=False, explicit=False):
 		cur_template = join(self.project_dir, ".template")
 		if template is None:
+			if not explicit:
+				print "Not a ford project! Create with: ford init"
+				return False
 			if isfile(cur_template):
 				template = read_file(cur_template)
 			else:
 				template = DEFAULT_TEMPLATE
 
+		print "Ford init:"
 		has_any = False
 		tpl_dir = join(USER_DIR, "templates", template)
 		if not exists(tpl_dir):
@@ -954,6 +955,7 @@ class Project(object):
 		else:
 			write_file(join(self.project_dir, ".template"), template)
 		print ""
+		return True
 
 	#------------------------------
 	# Update

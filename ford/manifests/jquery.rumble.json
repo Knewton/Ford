@@ -1,7 +1,0 @@
-{
-	"jquery.rumble": {
-		"uri": "git://github.com/jackrugile/jRumble.git",
-		"comp": {"js": "jquery.jrumble"},
-		"reqs": ["jquery"]
-	}
-}

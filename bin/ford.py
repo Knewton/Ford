@@ -71,7 +71,8 @@ def main():
 
 	p = Project(directory)
 	if not opts.skip or action == "init":
-		p.init(opts.template, opts.force)
+		if not p.init(opts.template, opts.force, action == "init"):
+			exit(1)
 
 	if action == "init":
 		exit(0)

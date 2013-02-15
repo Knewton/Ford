@@ -1,6 +1,0 @@
-{
-	"store": {
-		"uri": "git://github.com/Knewton/Store-js.git",
-		"comp": ["js"]
-	}
-}

@@ -1,8 +1,0 @@
-{
-	"json": {
-		"uri": "git://github.com/douglascrockford/JSON-js.git",
-		"comp": {
-			"js": "json2.js"
-		}
-	}
-}

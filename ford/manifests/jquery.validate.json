@@ -1,7 +1,0 @@
-{
-	"jquery.validate": {
-		"uri": "//ajax.aspnetcdn.com/ajax/jquery.validate/1.9/",
-		"comp": ["js"],
-		"reqs": ["jquery"]
-	}
-}

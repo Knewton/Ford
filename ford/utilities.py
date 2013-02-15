@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from os.path import expanduser, isdir, exists, join, abspath
+from os.path import (expanduser, isdir, exists, join, abspath, splitext,
+	basename, dirname)
 from os import mkdir, makedirs, listdir
 from errno import EEXIST
 from subprocess import Popen, PIPE, STDOUT
@@ -80,3 +81,49 @@ def merge_directories(src, dest, dirs=None, force=False, underscore=False):
 		if copy_missing_files(join(src, d), join(dest, d), force, underscore):
 			made_change = True
 	return made_change
+
+def create_archive_basedir(file_path):
+	"""Given an archive, creates a sibling directory for clean checkout"""
+	file_name, ext = splitext(basename(file_path))
+	basedir = join(dirname(file_path), file_name)
+
+	if not isdir(basedir):
+		makedirs(basedir)
+
+	return basedir
+
+def unzip(archive, path):
+	from zipfile import ZipFile
+	z = ZipFile(archive, "r")
+	z.extractall(path)
+
+def untar(archive, path):
+	from tarfile import TarFile
+	t = TarFile(archive, "r")
+	t.extractall(path)
+
+class UnknownArchiveException(Exception):
+	pass
+
+def unpackage(file_path, package_type=None):
+	"""Unpackages an archive into a sibling directory of the same name."""
+	if package_type is None:
+		if ".tar" in file_path:
+			package_type = "tar"
+		else:
+			file_name, ext = splitext(file_path) # foo.txt -> (foo, .txt)
+			package_type = ext[1:] # Remove the . from .txt
+
+	# Create a sibling directory for extraction
+	basedir = create_archive_basedir(file_path)
+
+	# Handle the extraction
+	if package_type == "zip":
+		unzip(file_path, basedir)
+	elif package_type == "tar":
+		untar(file_path, basedir)
+	else:
+		raise UnknownArchiveException(package_type)
+
+	# Return the destination
+	return basedir

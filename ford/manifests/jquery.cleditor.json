@@ -1,7 +1,0 @@
-{
-	"jquery.cleditor": {
-		"uri": "git://github.com/cleditor/cleditor.git",
-		"comp": ["js", "css", "images/"],
-		"reqs": ["jquery"]
-	}
-}

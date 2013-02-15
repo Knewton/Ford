@@ -7,10 +7,11 @@ Directions for installing the build tool can be found in INSTALL.md
 # Getting started
 
 ## Creating a new project
-Zero to working in three commands.
+Zero to working in four commands.
 
     mkdir foo
     cd foo
+    ford init
     ford update
 
 # Important notes
