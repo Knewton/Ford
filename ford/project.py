@@ -929,13 +929,13 @@ class Project(object):
 	def init(self, template=None, force=False, explicit=False):
 		cur_template = join(self.project_dir, ".template")
 		if template is None:
-			if not explicit:
-				print "Not a ford project! Create with: ford init"
-				return False
 			if isfile(cur_template):
 				template = read_file(cur_template)
 			else:
 				template = DEFAULT_TEMPLATE
+				if not explicit:
+					print "Not a ford project! Create with: ford init"
+					return False
 
 		print "Ford init:"
 		has_any = False
