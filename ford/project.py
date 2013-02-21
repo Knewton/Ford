@@ -99,11 +99,18 @@ def expand_namespace(shorthand, obj):
 	for i in shorthand[1]:
 		obj[shorthand[0] + i] = "."
 
-def expand_libs(libs):
+def replace_library(library, project):
+	if "use_as" in project.manifest:
+		if library in project.manifest["use_as"]:
+			return project.manifest["use_as"][library]
+	return library
+
+def expand_libs(libs, project):
 	if not hasattr(libs, "keys"):
 		b = {}
 		for l in libs:
 			if isinstance(l, basestring):
+				l = replace_library(l, project)
 				b[l] = "."
 			else:
 				expand_namespace(l, b)
@@ -112,6 +119,7 @@ def expand_libs(libs):
 	if "&" in libs:
 		for l in libs["&"]:
 			if isinstance(l, basestring):
+				l = replace_library(l, project)
 				libs[l] = "."
 			else:
 				expand_namespace(l, libs)
@@ -534,7 +542,7 @@ class Project(object):
 	def _missing_reqs(self, reqs, pending_lib, pending_resource):
 		missing = {}
 
-		reqs = expand_libs(reqs)
+		reqs = expand_libs(reqs, self)
 
 		for lib in reqs:
 			req_resources = reqs[lib]
@@ -892,15 +900,23 @@ class Project(object):
 			path = lib_path(lib)
 			self.libraries[lib] = get_manifest(lib_path(lib))
 			self.included[lib] = {}
+
+		replaced = lib
+		lib = replace_library(lib, self)
+		if lib == replaced:
+			replaced = None
+
 		if resources in [".", "*"]:
 			resources = [lib]
 		for r in resources:
+			if r == replaced:
+				r = lib
 			self._include_library_resource(lib, r)
 
 	def _load_resources(self, includes, proceed_if_empty=False):
 		has_resources = False
 
-		includes = expand_libs(includes)
+		includes = expand_libs(includes, self)
 
 		for lib in includes:
 			has_resources = True

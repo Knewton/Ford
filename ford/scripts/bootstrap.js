@@ -182,6 +182,19 @@
 	}
 
 	/**
+	 * Use the use_at declaration of an application manifest.
+	 * @param {string} library The name to possibly convert.
+	 */
+	function replaceLibrary(library) {
+		if (applicationManifest.use_as) {
+			if (applicationManifest.use_as[library]) {
+				return applicationManifest.use_as[library];
+			}
+		}
+		return library;
+	}
+
+	/**
 	 * Takes the "&" argument from a manifest and expands it out.
 	 * @param {Array|Object} libs A list of libs.
 	 */
@@ -197,7 +210,7 @@
 		if (libs instanceof Array) {
 			b = {};
 			for (i in libs) {
-				l = libs[i];
+				l = replaceLibrary(libs[i]);
 				if (l instanceof Array) {
 					expandNamespace(l, b);
 				} else {
@@ -212,7 +225,7 @@
 		if (exp !== undefined) {
 			for (lib in exp) {
 				if (exp.hasOwnProperty(lib)) {
-					lib = exp[lib];
+					lib = replaceLibrary(exp[lib]);
 					if (lib instanceof Array) {
 						expandNamespace(lib, libs);
 					} else {
@@ -699,7 +712,7 @@
 	 * @param {string} pendingResource The resource pending loading.
 	 * @return {Object<string, *>} The missing requirements object.
 	 */
-	function missingrequirements(requirements, pendingLib, pendingResource) {
+	function missingRequirements(requirements, pendingLib, pendingResource) {
 		var missing = {
 				length: 0,
 				resources: {}
@@ -897,7 +910,7 @@
 			includedResources[library][resource] = {
 				included: false,
 				loading: false,
-				requires: missingrequirements(definition.reqs, library,
+				requires: missingRequirements(definition.reqs, library,
 												resource)
 			};
 			pendingResources += 1;
@@ -921,9 +934,16 @@
 	 * Includes resources from a library.
 	 * @param {string} library The library to load the resources from.
 	 * @param {Array<string>} resources A list of resources to load.
+	 * @param {string?} replaced The replacement lib string.
 	 */
-	function includeLibraryResources(library, resources) {
+	function includeLibraryResources(library, resources, replaced) {
 		var resource;
+
+		replaced = library;
+		library = replaceLibrary(library);
+		if (replaced === library) {
+			replaced = null;
+		}
 
 		if (resources === "." || resources === "*") {
 			resources = [library];
@@ -940,12 +960,16 @@
 			resource = mkpath(libraryPath(library), "manifest.json");
 			get(resource, function (d) {
 				libraryDefinitions[library] = d;
-				includeLibraryResources(library, resources);
+				includeLibraryResources(library, resources, replaced);
 			}, "json");
 		} else {
 			for (resource in resources) {
 				if (resources.hasOwnProperty(resource)) {
-					includeLibraryResource(library, resources[resource]);
+					resource = resources[resource];
+					if (replaced === resource) {
+						resource = library;
+					}
+					includeLibraryResource(library, resource);
 				}
 			}
 		}
