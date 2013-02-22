@@ -737,7 +737,7 @@ class Project(object):
 		if protocol in ["http", "https"] and "packaged" in details:
 			url = "://".join([protocol, uri])
 			protocol = "file"
-			dest = self._make_tmp(uri, lib) + ".pkg"
+			dest = self._make_tmp(uri, lib) + "." + details["packaged"]
 			if not dest in self.unpacked:
 				wget(url, details["packaged"], dest)
 				self.unpacked[dest] = unpackage(dest)
