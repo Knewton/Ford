@@ -733,6 +733,9 @@ class Project(object):
 			lib_target = repo
 			if not isdir(repo):
 				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
+			if "root" in details:
+				self.tmp_paths[uri] = join(repo, details["root"])
+				repo = join(repo, details["root"])
 
 		if protocol in ["http", "https"] and "packaged" in details:
 			url = "://".join([protocol, uri])
@@ -775,7 +778,10 @@ class Project(object):
 				path = path[:path.rfind("/")]
 			i = "images"
 			if ftype == "images/" or imgs is None:
-				path = "{0}/images".format(path)
+				if isinstance(imgs, basestring) or isinstance(imgs, str):
+					path = "{0}/{1}".format(path, imgs)
+				else:
+					path = "{0}/images".format(path)
 				if imgs is None:
 					imgs = listdir(path)
 
