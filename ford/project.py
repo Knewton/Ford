@@ -174,12 +174,12 @@ def mime_valid(expected, ftype):
 
 def wget(url, ftype, dest):
 	try:
+		print "{0} => {1}".format(url, dest)
 		resp = urlopen(url)
 		headers = resp.headers
 		if not mime_valid(headers["content-type"], ftype):
 			raise UpdateError("{0} ({2}) not of type {1}".format(url,
 				VALID_MIME[ftype], headers["content-type"]))
-		print "{0} => {1}".format(url, dest)
 		write_file(dest, resp.read())
 	except HTTPError as e:
 		raise UpdateError("{0} ({1})".format(str(e), url))
@@ -858,8 +858,9 @@ class Project(object):
 				del manifest["*"]
 			if "." in manifest:
 				write_manifest = False
-			for resource in manifest:
-				self._update_resource(lib, resource, manifest[resource], base)
+			if not "skip_update" in self.manifest or lib not in self.manifest["skip_update"]:
+				for resource in manifest:
+					self._update_resource(lib, resource, manifest[resource], base)
 		except UpdateError as e:
 			print str(e)
 			exit(1)
