@@ -759,6 +759,9 @@ class Project(object):
 				rmtree(full_lib_dest)
 			print lib_target, "==>", full_lib_dest
 			copytree(lib_target, full_lib_dest)
+			gitdir = join(full_lib_dest, ".git")
+			if isdir(gitdir):
+				rmtree(gitdir)
 			return
 
 		if not "comp" in details:
