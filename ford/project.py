@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from sys import exit
 from json import dumps, loads
+from re import findall
 from os import makedirs, remove, symlink, getcwd, listdir, chdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 	dirname, basename, splitext, split, normpath)
@@ -801,13 +802,20 @@ class Project(object):
 
 		def cleanup(df, ft, dt):
 			# Cleans up destination files
-			if ft == "css" and "cssImageFix" in dt:
-				fix = dt["cssImageFix"]
+			if ft == "css":
 				fc = read_file(df)
-				if isinstance(fix, basestring) or isinstance(fix, str):
-					fix = [fix]
-				for fx in fix:
-					fc = fc.replace(fx, "images")
+				if "cssImageFix" in dt:
+					fix = dt["cssImageFix"]
+					if isinstance(fix, basestring) or isinstance(fix, str):
+						fix = [fix]
+					for fx in fix:
+						fc = fc.replace(fx, "images")
+				for m in findall('url\(([^)]+)\)', fc):
+					u = m.replace("'", "").replace('"', "")
+					if "images/" not in u:
+						u = "images/{0}".format(u)
+					fc = fc.replace(m, u)
+				# Strip strings from images
 				write_file(df, fc)
 
 		if protocol == "git":
