@@ -487,11 +487,18 @@ class Project(object):
 
 		write_file(index.format(self.output_dir), str(index_html))
 
-		loc = "{0}/localization"
-		if exists(loc.format(self.project_dir)):
-			if exists(loc.format(self.output_dir)):
-				rmtree(loc.format(self.output_dir))
-			copytree(loc.format(self.project_dir), loc.format(self.output_dir))
+		dirs_to_copy = []
+		if not "directories" in self.manifest:
+			dirs_to_copy.append("localization")
+		else:
+			dirs_to_copy = self.manifest["directories"]
+
+		for d in dirs_to_copy:
+			location = "{{0}}/{0}".format(d)
+			if exists(location.format(self.project_dir)):
+				if exists(location.format(self.output_dir)):
+					rmtree(location.format(self.output_dir))
+				copytree(location.format(self.project_dir), location.format(self.output_dir))
 
 	#------------------------------
 	# Dependency management
