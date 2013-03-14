@@ -487,10 +487,8 @@ class Project(object):
 
 		write_file(index.format(self.output_dir), str(index_html))
 
-		dirs_to_copy = []
-		if not "directories" in self.manifest:
-			dirs_to_copy.append("localization")
-		else:
+		dirs_to_copy = ["localization"]
+		if "directories" in self.manifest:
 			dirs_to_copy = self.manifest["directories"]
 
 		for d in dirs_to_copy:
