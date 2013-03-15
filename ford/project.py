@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from sys import exit
 from json import dumps, loads
-from re import findall
+from re import findall, sub
 from os import makedirs, remove, symlink, getcwd, listdir, chdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 	dirname, basename, splitext, split, normpath)
@@ -54,6 +54,13 @@ TARGETS = ["templates", "scripts"]
 
 DEFAULT_TEMPLATE = "web-application"
 PROJECT_DIRS = ["lib", "manifests"]
+
+#------------------------------
+# Single file
+#------------------------------
+
+JSPACK = "window.fordPacked=true;window.fordSrc={};"
+JSFILE = "window.fordSrc['{0}']="
 
 #------------------------------
 # Update and Build
@@ -373,6 +380,8 @@ class Project(object):
 		self.content = {"html": {}, "css": [], "js": []}
 		self.manifest = None
 		self.build_project = False
+		self.single_file = False
+		self.rawsrc = False
 		self.update_project = True
 
 	#------------------------------
@@ -385,12 +394,19 @@ class Project(object):
 	# Builder utilities
 	#------------------------------
 
+	def _manifest_flag(self, name):
+		if not name in self.manifest:
+			return False
+		return self.manifest[name]
+
 	def _compile(self, ftype):
 		cmd = ["juicer", "merge", "--force", "--document-root",
 				"'{0}'".format(self.project_dir)]
 		src_file = "{0}/application.{1}".format(self.output_dir, ftype)
 		if ftype == "js":
 			cmd += ["--skip-verification"]
+			if self._manifest_flag("rawsrc") or self.rawsrc:
+				cmd += ['--minifyer ""']
 		elif ftype == "css":
 			cmd += ["--force-image-embed", "--embed-images", "data_uri"]
 		cmd += ["'{0}'".format(src_file)]
@@ -465,28 +481,6 @@ class Project(object):
 		bootstrap = bootstrap[0]
 		index_idx = bootstrap.parent.contents.index(bootstrap)
 
-		if has_js:
-			script = Tag(index_html, "script")
-			script["type"] = "text/javascript"
-			script["src"] = "application.min.js?_={0}".format(str(time()))
-			bootstrap.parent.insert(index_idx + 1, script)
-
-		if has_css:
-			style = Tag(index_html, "link")
-			style["media"] = "screen, print"
-			style["rel"] = "stylesheet"
-			style["type"] = "text/css"
-			style["href"] = "application.min.css?_={0}".format(str(time()))
-			bootstrap.parent.insert(index_idx + 1, style)
-
-		# Remove the bootstrap tag
-		bootstrap.extract()
-
-		# Handle component HTML
-		index_html = self._resolve_component_html(index_html)
-
-		write_file(index.format(self.output_dir), str(index_html))
-
 		dirs_to_copy = []
 		if "directories" in self.manifest:
 			dirs_to_copy = self.manifest["directories"]
@@ -497,7 +491,64 @@ class Project(object):
 			if exists(location.format(self.project_dir)):
 				if exists(location.format(self.output_dir)):
 					rmtree(location.format(self.output_dir))
-				copytree(location.format(self.project_dir), location.format(self.output_dir))
+				copytree(location.format(self.project_dir),
+							location.format(self.output_dir))
+
+		use_single = self._manifest_flag("embed") or self.single_file
+		rp = []
+
+		# Package the scripts first, cause we prepend the js def later
+		if use_single and "package_scripts" in self.manifest:
+			for f in self.manifest["package_scripts"]:
+				fpath = join(self.output_dir, f)
+				if isfile(fpath):
+					script = Tag(index_html, "script")
+					script["type"] = "text/javascript"
+					script.append(JSFILE.format(f) +  "$FRD" + str(len(rp)) + ";")
+					bootstrap.parent.insert(index_idx + 1, script)
+					rp.append(read_file(fpath))
+
+		if has_js:
+			script = Tag(index_html, "script")
+			script["type"] = "text/javascript"
+			if use_single:
+				script.append(JSPACK + "$FRD" + str(len(rp)))
+				rp.append(read_file("{0}.min.js".format(path)))
+			else:
+				script["src"] = "application.min.js?_={0}".format(str(time()))
+			bootstrap.parent.insert(index_idx + 1, script)
+
+		if has_css:
+			if use_single:
+				style = Tag(index_html, "style")
+				style["media"] = "screen, print"
+				style["type"] = "text/css"
+				style.string = read_file("{0}.min.css".format(path))
+			else:
+				style = Tag(index_html, "link")
+				style["media"] = "screen, print"
+				style["rel"] = "stylesheet"
+				style["type"] = "text/css"
+				style["href"] = "application.min.css?_={0}".format(str(time()))
+			bootstrap.parent.insert(index_idx + 1, style)
+
+		# Remove the bootstrap tag
+		bootstrap.extract()
+
+		# Handle component HTML
+		index_html = self._resolve_component_html(index_html)
+		write_file(index.format(self.output_dir), str(index_html))
+
+		# Beautifulsoup doesn't do well with this
+		if len(rp):
+			fdata = read_file(index.format(self.output_dir))
+			idx = 0
+			for repl in rp:
+				fdata = fdata.replace("$FRD" + str(idx), repl)
+				idx += 1
+			write_file(index.format(self.output_dir), fdata)
+
+
 
 	#------------------------------
 	# Dependency management
@@ -1012,10 +1063,12 @@ class Project(object):
 	# Build
 	#------------------------------
 
-	def build(self, output_dir, skip=False):
+	def build(self, output_dir, skip=False, single=False, rawsrc=False):
 		if not skip:
 			print "Ford update:"
 		self.build_project = True
+		self.single_file = single
+		self.rawsrc = rawsrc
 		self.update_project = not skip
 		self.output_dir = realpath(output_dir)
 		mkdirp(self.output_dir)

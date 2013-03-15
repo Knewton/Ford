@@ -26,7 +26,12 @@ def optparse():
 			"             Use --skip to skip init resource before build.",
 			"    build:   Builds the project. Runs init and update first.",
 			"             Use --skip to skip init and update before build.",
-			"             Use --output to change build directory."
+			"             Use --output to change build directory.",
+			"    embed:   Embeds all files into the index.html to make a one",
+			"             page application. You can enable this by setting",
+			"             'embed': true in manifest.json.",
+			"    rawsrc:  Does not minify javascript files. You can enable "
+			"             this by setting 'rawsrc': true in manifest.json.",
 	])
 	parser = OptionParser(usage=desc)
 	parser.add_option("-f", "--force", dest="force", action="store_true",
@@ -37,6 +42,10 @@ def optparse():
 						help="The project template to use for init.")
 	parser.add_option("-o", "--output", dest="output", default="./output",
 						help="The directory to output built files to.")
+	parser.add_option("-e", "--embed", dest="embed", action="store_true",
+						default=False, help="Embed into one index.html file.")
+	parser.add_option("-r", "--rawsrc", dest="rawsrc", action="store_true",
+						default=False, help="Do not minify javascript.")
 	return parser
 
 def main():
@@ -80,7 +89,7 @@ def main():
 	if action == "update":
 		p.update()
 	else:
-		p.build(abspath(opts.output), opts.skip)
+		p.build(abspath(opts.output), opts.skip, opts.embed, opts.rawsrc)
 
 	exit(0)
 
