@@ -48,7 +48,7 @@ def copy_missing_files(src, dest, force, underscore=False):
 
 		# Replace underscore with dot
 		if underscore and f[0] == "_":
-			dest_fp = ".{0}".format(f[1:])
+			dest_fp = join(dest, ".{0}".format(f[1:]))
 		else:
 			dest_fp = join(dest, f)
 
