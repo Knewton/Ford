@@ -71,22 +71,24 @@ ford_zip="https://nodeload.github.com/Knewton/Ford/zip/master"
 # Determine if your software is already installed.
 # @ret 0 - Yes; 1 - No; 2 - Yes, but nees update
 IsSoftwareInstalled() {
-	ProgramExists "ford" ; ford_installed=$?
+	return 1 # Force a new install every time
 
-	if [ $ford_installed -eq 0 ]; then
-		# By default, return that we need an upgrade anytime the installer is
-		# run. In the future, this can probably be enhanced with a version
-		# checker, but Ford has no such capability right now
-		return 2
-		# if [ behind_current_version ]; then
-		# 	return 2
-		# else
-		# 	return 0
-		# fi
-	fi
+	#ProgramExists "ford" ; ford_installed=$?
 
-	# Not installed
-	return 1
+	#if [ $ford_installed -eq 0 ]; then
+	#	# By default, return that we need an upgrade anytime the installer is
+	#	# run. In the future, this can probably be enhanced with a version
+	#	# checker, but Ford has no such capability right now
+	#	return 2
+	#	# if [ behind_current_version ]; then
+	#	# 	return 2
+	#	# else
+	#	# 	return 0
+	#	# fi
+	#fi
+
+	## Not installed
+	#return 1
 }
 
 # Determine if the software can be installed (check dependenceis, etc).
@@ -213,7 +215,7 @@ _wi_workspace="$_wi_workspace/$wi_name.web_install.$$"
 #------------------------------
 
 # Place the log in the current directory
-_wi_logpath="$PWD/$wi_name.web_install.$(date +%m-%d-%Y.%H-%M-%S)"
+_wi_logpath="/tmp/$wi_name.web_install.$(date +%m-%d-%Y.%H-%M-%S)"
 
 #------------------------------
 #
@@ -451,7 +453,7 @@ fi
 if [ $_wi_installed -ne 1 ]; then
 	if [ -n "$wi_usage" ]; then
 		echo "\nUsage instructions: $wi_usage\n"
-		`$wi_usage`
+		echo "`$wi_usage`"
 	fi
 fi
 
