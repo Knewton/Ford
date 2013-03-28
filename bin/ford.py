@@ -30,7 +30,7 @@ def optparse():
 			"    embed:   Embeds all files into the index.html to make a one",
 			"             page application. You can enable this by setting",
 			"             'embed': true in manifest.json.",
-			"    rawsrc:  Does not minify javascript files. You can enable "
+			"    rawsrc:  Does not minify javascript files. You can enable ",
 			"             this by setting 'rawsrc': true in manifest.json.",
 	])
 	parser = OptionParser(usage=desc)
