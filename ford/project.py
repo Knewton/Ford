@@ -497,8 +497,19 @@ class Project(object):
 		use_single = self._manifest_flag("embed") or self.single_file
 		rp = []
 
+		if has_js:
+			script = Tag(index_html, "script")
+			script["type"] = "text/javascript"
+			if use_single:
+				script.append("$FRD" + str(len(rp)))
+				rp.append(read_file("{0}.min.js".format(path)))
+			else:
+				script["src"] = "application.min.js?_={0}".format(str(time()))
+			bootstrap.parent.insert(index_idx + 1, script)
+
 		# Package the scripts first, cause we prepend the js def later
 		if use_single and "package_scripts" in self.manifest:
+			bootstrap.parent.insert(index_idx + 1, script)
 			for f in self.manifest["package_scripts"]:
 				fpath = join(self.output_dir, f)
 				if isfile(fpath):
@@ -508,14 +519,10 @@ class Project(object):
 					bootstrap.parent.insert(index_idx + 1, script)
 					rp.append(read_file(fpath))
 
-		if has_js:
+			# Insert preface tag with defs to prepare the package.
 			script = Tag(index_html, "script")
 			script["type"] = "text/javascript"
-			if use_single:
-				script.append(JSPACK + "$FRD" + str(len(rp)))
-				rp.append(read_file("{0}.min.js".format(path)))
-			else:
-				script["src"] = "application.min.js?_={0}".format(str(time()))
+			script.append(JSPACK)
 			bootstrap.parent.insert(index_idx + 1, script)
 
 		if has_css:
