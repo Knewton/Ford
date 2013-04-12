@@ -135,6 +135,36 @@ def expand_libs(libs, project):
 
 	return libs
 
+def expand_manifest(m, project):
+	new_manifest = {}
+	lib_resources = []
+
+	for k in m:
+		v = m[k]
+		if "reqs" in v:
+			v["reqs"] = expand_libs(v["reqs"], project)
+
+		if k[:1] == "@":
+			if "resources" in v:
+				resources = v["resources"]
+				del v["resources"]
+				lib_resources += resources
+
+				for rsc in resources:
+					new_manifest[rsc] = v
+
+				continue
+		elif k != "application":
+			lib_resources.append(k)
+
+		new_manifest[k] = v
+
+	if "application" in new_manifest:
+		new_manifest["application"]["reqs"]["."] = lib_resources
+
+	return new_manifest
+
+
 def get_json(fp):
 	if not exists(fp):
 		print "File '{0}' does not exist!".format(fp)
@@ -607,8 +637,6 @@ class Project(object):
 	def _missing_reqs(self, reqs, pending_lib, pending_resource):
 		missing = {}
 
-		reqs = expand_libs(reqs, self)
-
 		for lib in reqs:
 			req_resources = reqs[lib]
 
@@ -980,7 +1008,8 @@ class Project(object):
 			if self.update_project:
 				self._update_library(lib)
 			path = lib_path(lib)
-			self.libraries[lib] = get_manifest(lib_path(lib))
+			self.libraries[lib] = expand_manifest(get_manifest(lib_path(lib)),
+					self)
 			self.included[lib] = {}
 
 		replaced = lib

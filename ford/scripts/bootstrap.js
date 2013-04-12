@@ -156,88 +156,12 @@
 		 * @type{function()}
 		 */
 		window.onBootstrap = [];
-
-	//------------------------------
-	//
-	// Methods
-	//
-	//------------------------------
-
-	//------------------------------
-	// Utilities
-	//------------------------------
-
-	/**
-	 * Takes the ["foo.", ["a", "b"]] shorthand and expands it into the
-	 * object provided as {foo.a: ".", foo.b: "."} which includes each.
-	 * @param {Array} shorthand The ["foo.", ["a", "b"]] shorthand array.
-	 * @param {Object} obj The object to put the names into as dot includes.
-	 */
-	function expandNamespace(shorthand, obj) {
-		var i;
-
-		for (i = 0; i < shorthand[1].length; i++) {
-			obj[shorthand[0] + shorthand[1][i]] = ".";
-		}
-	}
-
-	/**
-	 * Use the use_at declaration of an application manifest.
-	 * @param {string} library The name to possibly convert.
-	 */
-	function replaceLibrary(library) {
-		if (applicationManifest.use_as) {
-			if (applicationManifest.use_as[library]) {
-				return applicationManifest.use_as[library];
-			}
-		}
-		return library;
-	}
-
-	/**
-	 * Takes the "&" argument from a manifest and expands it out.
-	 * @param {Array|Object} libs A list of libs.
-	 */
-	function expandLibs(libs) {
-		var lib,
-			exp,
-			b, i, l;
-
-		if (libs === undefined) {
-			return;
+tions should depend on all their resources
+		if (newManifest.application) {
+			newManifest.application.reqs["."] = libResources;
 		}
 
-		if (libs instanceof Array) {
-			b = {};
-			for (i in libs) {
-				l = replaceLibrary(libs[i]);
-				if (l instanceof Array) {
-					expandNamespace(l, b);
-				} else {
-					b[l] = ".";
-				}
-			}
-			libs = b;
-		}
-
-		exp = libs["&"];
-
-		if (exp !== undefined) {
-			for (lib in exp) {
-				if (exp.hasOwnProperty(lib)) {
-					lib = replaceLibrary(exp[lib]);
-					if (lib instanceof Array) {
-						expandNamespace(lib, libs);
-					} else {
-						libs[lib] = ".";
-					}
-				}
-			}
-
-			delete libs["&"];
-		}
-
-		return libs;
+		return newManifest;
 	}
 
 	/**
@@ -723,8 +647,6 @@
 			resource,
 			b, i;
 
-		requirements = expandLibs(requirements);
-
 		for (lib in requirements) {
 			if (requirements.hasOwnProperty(lib)) {
 				requiredResources = requirements[lib];
@@ -733,6 +655,7 @@
 				if (lib === ".") {
 					lib = pendingLib;
 				}
+
 				if (heldResources[lib] === undefined) {
 					heldResources[lib] = {};
 				}
@@ -740,6 +663,7 @@
 				if (requiredResources === "." || requiredResources === "*") {
 					requiredResources = [lib];
 				}
+
 				for (rIndex in requiredResources) {
 					if (requiredResources.hasOwnProperty(rIndex)) {
 						resource = requiredResources[rIndex];
@@ -959,7 +883,7 @@
 			includedResources[library] = {};
 			resource = mkpath(libraryPath(library), "manifest.json");
 			get(resource, function (d) {
-				libraryDefinitions[library] = d;
+				libraryDefinitions[library] = expandManifest(d);
 				includeLibraryResources(library, resources, replaced);
 			}, "json");
 		} else {
