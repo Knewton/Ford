@@ -156,7 +156,123 @@
 		 * @type{function()}
 		 */
 		window.onBootstrap = [];
-tions should depend on all their resources
+
+	//------------------------------
+	//
+	// Methods
+	//
+	//------------------------------
+
+	//------------------------------
+	// Utilities
+	//------------------------------
+
+	/**
+	 * Takes the ["foo.", ["a", "b"]] shorthand and expands it into the
+	 * object provided as {foo.a: ".", foo.b: "."} which includes each.
+	 * @param {Array} shorthand The ["foo.", ["a", "b"]] shorthand array.
+	 * @param {Object} obj The object to put the names into as dot includes.
+	 */
+	function expandNamespace(shorthand, obj) {
+		var i;
+
+		for (i = 0; i < shorthand[1].length; i++) {
+			obj[shorthand[0] + shorthand[1][i]] = ".";
+		}
+	}
+
+	/**
+	 * Use the use_at declaration of an application manifest.
+	 * @param {string} library The name to possibly convert.
+	 */
+	function replaceLibrary(library) {
+		if (applicationManifest.use_as) {
+			if (applicationManifest.use_as[library]) {
+				return applicationManifest.use_as[library];
+			}
+		}
+		return library;
+	}
+
+	/**
+	 * Takes the "&" argument from a manifest and expands it out.
+	 * @param {Array|Object} libs A list of libs.
+	 */
+	function expandLibs(libs) {
+		var lib,
+			exp,
+			b, i, l;
+
+		if (libs === undefined) {
+			return;
+		}
+
+		if (libs instanceof Array) {
+			b = {};
+			for (i in libs) {
+				l = replaceLibrary(libs[i]);
+				if (l instanceof Array) {
+					expandNamespace(l, b);
+				} else {
+					b[l] = ".";
+				}
+			}
+			libs = b;
+		}
+
+		exp = libs["&"];
+
+		if (exp !== undefined) {
+			for (lib in exp) {
+				if (exp.hasOwnProperty(lib)) {
+					lib = replaceLibrary(exp[lib]);
+					if (lib instanceof Array) {
+						expandNamespace(lib, libs);
+					} else {
+						libs[lib] = ".";
+					}
+				}
+			}
+
+			delete libs["&"];
+		}
+
+		return libs;
+	}
+
+	function expandManifest(m) {
+		var newManifest = {},
+			libResources = [],
+			resources,
+			k, v,
+			i;
+
+		for (k in m) {
+			if (m.hasOwnProperty(k)) {
+				v = m[k];
+				v.reqs = expandLibs(v.reqs);
+
+				if (k.substr(0, 1) === "@") {
+					if (v.resources) {
+						resources = v.resources;
+						libResources = libResources.concat(resources);
+						delete v.resources;
+
+						for (i = 0; i < resources.length; i++) {
+							newManifest[resources[i]] = v;
+						}
+					}
+
+					continue;
+				} else if (k !== "application") {
+					libResources.push(k);
+				}
+
+				newManifest[k] = v;
+			}
+		}
+
+		// Applications should depend on all their resources
 		if (newManifest.application) {
 			newManifest.application.reqs["."] = libResources;
 		}
