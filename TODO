@@ -1,5 +1,0 @@
-* Add support for copying manifests from projects
-* Less hacky solution for template files in directories.
-* Template manifest files to define directories to create, and scripts to copy.
-* shutil.copytree does not preserve permissions
-

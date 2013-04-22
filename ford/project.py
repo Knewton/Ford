@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#
+#  Copyright (c) 2012 Knewton
+#  Dual licensed under:
+#   MIT: http://www.opensource.org/licenses/mit-license.php
+#   GPLv3: http://www.opensource.org/licenses/gpl-3.0.html
+#
 from sys import exit
 from json import dumps, loads
 from re import findall, sub
