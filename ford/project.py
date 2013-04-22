@@ -1,23 +1,60 @@
 #!/usr/bin/env python
 #
-#  Copyright (c) 2012 Knewton
-#  Dual licensed under:
+# Copyright (c) 2013 Knewton
+#
+# Dual licensed under:
 #   MIT: http://www.opensource.org/licenses/mit-license.php
 #   GPLv3: http://www.opensource.org/licenses/gpl-3.0.html
+
+"""Ford is a web application development and compilation tool."""
+
+#------------------------------
 #
-from sys import exit
+# Includes
+#
+#------------------------------
+
+#------------------------------
+# Built-in
+#------------------------------
+
 from json import dumps, loads
-from re import findall, sub
 from os import makedirs, remove, symlink, getcwd, listdir, chdir
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
 	dirname, basename, splitext, split, normpath)
-from time import time
+from pprint import pprint
+from re import findall, sub
 from shutil import copyfile, copytree, rmtree
+from sys import exit
+from time import time
+from urllib2 import urlopen, HTTPError
+
+#------------------------------
+# Third-party
+#------------------------------
+
 from BeautifulSoup import BeautifulSoup, Tag
+
+#------------------------------
+# Project
+#------------------------------
+
 from utilities import (mkdirp, read_file, write_file, call, merge_directories,
 	fix_path, unpackage)
-from urllib2 import urlopen, HTTPError
-from pprint import pprint
+
+#------------------------------
+#
+# Module info
+#
+#------------------------------
+
+__author__= "Eric Garside"
+__copyright__ = "Copyright (c) 2013 Knewton"
+__version__ = "1.0.0"
+__license__ = "GPLv3, MIT"
+__maintainer__ = "Eric Garside"
+__email__ = "eric@knewton.com"
+__status__ = "Development"
 
 #------------------------------
 #
