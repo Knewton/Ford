@@ -120,6 +120,12 @@
 		libraryDefinitions = {},
 
 		/**
+		 * A set of groups for each library.
+		 * @type {Object<string, Object<string, Array<string>>>}
+		 */
+		libGroups = {},
+
+		/**
 		 * A list of included library resources.
 		 * @type {Object<string, Array<string>>}
 		 */
@@ -240,11 +246,11 @@
 		return libs;
 	}
 
-	function expandManifest(m) {
+	function expandManifest(lib, m) {
 		var newManifest = {},
 			libResources = [],
 			resources,
-			k, v,
+			k, v, gk,
 			i;
 
 		for (k in m) {
@@ -255,6 +261,11 @@
 				if (k.substr(0, 1) === "@") {
 					if (v.resources) {
 						resources = v.resources;
+						gk = k.substr(1);
+						if (libGroups[lib] === undefined) {
+							libGroups[lib] = {};
+						}
+						libGroups[lib][gk] = resources;
 						libResources = libResources.concat(resources);
 						delete v.resources;
 
@@ -543,8 +554,36 @@
 			// If no matching section is defined in the sectionMap, the
 			// replaceElement method will simply remove the target section.
 			tSection = tSections[index];
-			replaceElement(tSection, sectionMap[tSection.getAttribute("class")]);
+			replaceElement(tSection,
+					sectionMap[tSection.getAttribute("class")]);
 		}
+	}
+
+	function expandComponentGroups(component) {
+		var id = component.getAttribute("id"),
+			parts = id.split("@"),
+			lib = parts.shift(),
+			group = parts.join("@"),
+			fragment,
+			factory,
+			index,
+			groups = libGroups[lib],
+			resources;
+
+		if (groups === undefined || [group] === undefined) {
+			throw lib + " contains no group (@" + group + ")";
+		}
+
+		resources = groups[group];
+		fragment = document.createDocumentFragment();
+		factory = document.createElement("div");
+		for (index = 0; index < resources.length; index++) {
+			factory.innerHTML = '<component id="' + lib + "-" +
+					resources[index] + '"></component>';
+			fragment.appendChild(factory.firstChild);
+		}
+
+		replaceElement(component, fragment);
 	}
 
 	/**
@@ -553,11 +592,11 @@
 	 */
 	function insertComponent(component) {
 		var id = component.getAttribute("id"),
-			factory = document.createElement("div"),
 			parts = id.split("-"),
 			lib = parts.shift(),
 			resource = parts.join("-"),
 			content,
+			factory,
 			element;
 
 		if (htmlFragments[lib] === undefined ||
@@ -566,6 +605,7 @@
 		}
 
 		content = htmlFragments[lib][resource];
+		factory = document.createElement("div");
 		factory.innerHTML = content;
 		element = factory.firstChild;
 
@@ -586,10 +626,17 @@
 	 * the class of a sect tag within the component to be replaced.
 	 */
 	function resolveComponents() {
-		var c = document.getElementsByTagName("component"),
+		var g = document.getElementsByTagName("group"),
+			c,
 			index;
 
+		g = Array.prototype.slice.call(g);
+		for (index = 0; index < g.length; index++) {
+			expandComponentGroups(g[index]);
+		}
+
 		// Convert from a node list before modifying
+		c = document.getElementsByTagName("component"),
 		c = Array.prototype.slice.call(c);
 
 		for (index = 0; index < c.length; index++) {
@@ -597,7 +644,8 @@
 		}
 
 		// Recursively inject components
-		if (document.getElementsByTagName("component").length > 0) {
+		if (document.getElementsByTagName("component").length > 0 ||
+			document.getElementsByTagName("group").length > 0) {
 			resolveComponents();
 		}
 	}
@@ -999,7 +1047,7 @@
 			includedResources[library] = {};
 			resource = mkpath(libraryPath(library), "manifest.json");
 			get(resource, function (d) {
-				libraryDefinitions[library] = expandManifest(d);
+				libraryDefinitions[library] = expandManifest(library, d);
 				includeLibraryResources(library, resources, replaced);
 			}, "json");
 		} else {

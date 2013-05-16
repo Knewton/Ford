@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#
 # Copyright (c) 2013 Knewton
 #
 # Dual licensed under:
@@ -131,7 +130,7 @@ class UpdateError(Exception):
 #------------------------------
 
 # Add tags to beautifulsoup or HTML will not build properly
-CUSTOM_TAGS = ("component", "def", "sect")
+CUSTOM_TAGS = ("group", "component", "def", "sect")
 BeautifulSoup.NESTABLE_BLOCK_TAGS += CUSTOM_TAGS
 for t in CUSTOM_TAGS:
 	BeautifulSoup.NESTABLE_TAGS[t] = []
@@ -178,7 +177,7 @@ def expand_libs(libs, project):
 
 	return libs
 
-def expand_manifest(m, project):
+def expand_manifest(lib, m, project):
 	new_manifest = {}
 	lib_resources = []
 
@@ -190,6 +189,10 @@ def expand_manifest(m, project):
 		if k[:1] == "@":
 			if "resources" in v:
 				resources = v["resources"]
+				gk = k[1:]
+				if lib not in project.libGroups:
+					project.libGroups[lib] = {}
+				project.libGroups[lib][gk] = resources
 				del v["resources"]
 				lib_resources += resources
 
@@ -445,6 +448,7 @@ class Project(object):
 		self.project_dir = realpath(project_dir)
 		self.output_dir = None
 		self.libraries = {}
+		self.libGroups = {}
 		self.included = {}
 		self.unpacked = {}
 		self.held_resources = {}
@@ -489,6 +493,30 @@ class Project(object):
 			print "Error compiling {0}".format(src_file)
 			exit(1)
 
+	def _expand_component_group(self, component):
+		cid = component["id"]
+		parts = cid.split("@")
+		lib = parts.pop(0)
+		group = "-".join(parts)
+
+		if not lib in self.libGroups:
+			print "{0} does not contain any groups!".format(lib)
+			exit(1)
+
+		groups = self.libGroups[lib]
+
+		if not group in groups:
+			print "{0} does not contain group {1}!".format(lib, group)
+			exit(1)
+
+		resources = groups[group]
+		index_idx = component.parent.contents.index(component)
+		for resource in resources:
+			tpl = '<component id="{0}-{1}"></component>'.format(lib, resource)
+			component.parent.insert(index_idx + 1, BeautifulSoup(tpl))
+
+		replace_element(component)
+
 	def _insert_component(self, component):
 		cid = component["id"]
 		parts = cid.split("-")
@@ -508,11 +536,16 @@ class Project(object):
 		replace_element(component, element)
 
 	def _resolve_component_html(self, doc):
+		groups = doc.findAll("group")
+		for g in groups:
+			self._expand_component_group(g)
+		doc = BeautifulSoup(str(doc))
+
 		components = doc.findAll("component")
 		for c in components:
 			self._insert_component(c)
 		doc = BeautifulSoup(str(doc))
-		if len(doc.findAll("component")) > 0:
+		if len(doc.findAll("component")) > 0 or len(doc.findAll("group")) > 0:
 			doc = self._resolve_component_html(doc)
 		return doc
 
@@ -1051,8 +1084,8 @@ class Project(object):
 			if self.update_project:
 				self._update_library(lib)
 			path = lib_path(lib)
-			self.libraries[lib] = expand_manifest(get_manifest(lib_path(lib)),
-					self)
+			self.libraries[lib] = expand_manifest(lib,
+				get_manifest(lib_path(lib)), self)
 			self.included[lib] = {}
 
 		replaced = lib
