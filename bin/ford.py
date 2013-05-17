@@ -1,24 +1,33 @@
 #!/usr/bin/env python
 from optparse import OptionParser
 from os.path import abspath, isdir
-from os import chdir
+from os import chdir, getuid
 from sys import exit
 from ford.utilities import mkdirp
+from ford import utilities
 
-from ford.project import Project, upgrade, cdnimport
+from ford.project import Project, upgrade, cdnimport, selfupdate
 
-SUPPORTED_ACTIONS = ["upgrade", "init", "update", "build"]
+SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup",
+	"init", "update", "build"]
 
 def optparse():
 	desc="\n".join(["usage: %prog [options] action [directory]",
 			"A development and build tool for javascript applications.",
 			"",
-			"Supported actions:",
+			"Ford tool actions:",
 			"    import:  Pulls in all the packages hosted on CDNJS as ford",
 			"             ready manifests for import. Use --force to update",
 			"             the cached package listing from cdnjs.com",
 			"    upgrade: Upgrades the current user's ford resources.",
 			"             Use --force to overwrite existing resources.",
+			"    selfup:  Performs a self-update, getting the latest Ford.",
+			"             Must be run as root.",
+			"    latest:  Performs a selfup, upgrade, and import.",
+			"             Must be run as root.",
+			"             Use --force to overwrite existing resources.",
+			"",
+			"Ford project actions:",
 			"    init:    Copies project resources from a template.",
 			"             Use --force to overwrite existing resources.",
 			"             Use --template to specify a new template.",
@@ -27,6 +36,8 @@ def optparse():
 			"    build:   Builds the project. Runs init and update first.",
 			"             Use --skip to skip init and update before build.",
 			"             Use --output to change build directory.",
+			"",
+			"Manifets options:",
 			"    embed:   Embeds all files into the index.html to make a one",
 			"             page application. You can enable this by setting",
 			"             'embed': true in manifest.json.",
@@ -46,6 +57,8 @@ def optparse():
 						default=False, help="Embed into one index.html file.")
 	parser.add_option("-r", "--rawsrc", dest="rawsrc", action="store_true",
 						default=False, help="Do not minify javascript.")
+	parser.add_option("--no-colors", dest="colorless", action="store_true",
+						default=False, help="Hide colors.")
 	return parser
 
 def main():
@@ -62,7 +75,25 @@ def main():
 	elif len(args) == 1:
 		action = args[0]
 
+	utilities.USE_COLOR = not opts.colorless
+
+	is_root = getuid() == 0
+
 	directory = abspath(directory)
+	if is_root:
+		if action == "self-update":
+			os.getuid()
+			selfupdate()
+			exit(0)
+		elif action == "latest":
+			selfupdate()
+			upgrade(opts.force)
+			cdnimport(opts.force)
+			exit(0)
+	elif action in ["self-update", "latest"]:
+		print "{0} must be run as root.".format(action)
+		exit(1)
+
 	if action == "help":
 		optparse().print_help()
 		exit(0)

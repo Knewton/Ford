@@ -216,6 +216,7 @@ _wi_workspace="$_wi_workspace/$wi_name.web_install.$$"
 
 # Place the log in the current directory
 _wi_logpath="/tmp/$wi_name.web_install.$(date +%m-%d-%Y.%H-%M-%S)"
+_wi_loglatest="/tmp/$wi_name.web_install.latest"
 
 #------------------------------
 #
@@ -349,6 +350,10 @@ DisplaySoftwareInformation() {
 # Displays information to the user and gains explicit permission to continue
 # @ret 0 - Continue; 1 - Stop.
 ConfirmInstall() {
+	if [ "$WI_CONFIRM" = "true" ]; then
+		return 0
+	fi
+
 	echo "The following software is requesting permission to $_wi_action:\n"
 
 	DisplaySoftwareInformation
@@ -379,10 +384,10 @@ if [ "x$0" = "xsh" ]; then
 	# which is a bit cuter.  But on others, &1 is already closed,
 	# so catting to another script file won't do anything.
 	# This is triggered when users do `cat web_install.sh | sh`
-	curl -s $wi_uri > web_install-$$.sh
-	sh web_install-$$.sh
+	curl -s $wi_uri > /tmp/web_install-$$.sh
+	sh /tmp/web_install-$$.sh
 	ret=$?
-	rm web_install-$$.sh
+	rm /tmp/web_install-$$.sh
 	exit $ret
 fi
 
@@ -447,6 +452,7 @@ fi
 #------------------------------
 
 if [ -f $_wi_logpath ]; then
+	cp $_wi_logpath $_wi_loglatest
 	echo "\nA log of this installation is available here: $_wi_logpath"
 fi
 

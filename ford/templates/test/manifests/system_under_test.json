@@ -1,8 +1,0 @@
-{
-	"system_under_test": {
-		"uri": "../project_name_without_extension",
-		"comp": ["js"],
-		"reqs": ["jquery"],
-		"link": true
-	}
-}

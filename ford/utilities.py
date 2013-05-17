@@ -6,6 +6,8 @@ from errno import EEXIST
 from subprocess import Popen, PIPE, STDOUT
 from types import ListType
 from shutil import copyfile
+from pprint import pprint, pformat
+from termcolor import colored, cprint
 
 def mkdirp(path):
 	try:
@@ -24,15 +26,19 @@ def write_file(file_path, content, mode="w"):
 	with open(file_path, mode) as stream:
 		stream.write(content)
 
-def call(command, exit_on_failure=False):
-	if type(command) == ListType:
-		command = " ".join(command)
-	process = Popen(command, stdout=PIPE, stderr=STDOUT, shell=True)
-	print process.communicate()[0]
+def call(cmd, failexit=False, output=False, failout=False, tab=False):
+	if type(cmd) == ListType:
+		cmd = " ".join(cmd)
+	process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=True)
+	out = process.communicate()[0]
+	if output:
+		print out
 	code = process.returncode
-	if exit_on_failure:
-		if code != 0:
-			exit(1)
+	if code != 0:
+		if failout:
+			print out
+		if failexit:
+			exit(code)
 	return code
 
 def fix_path(p):
@@ -56,9 +62,13 @@ def copy_missing_files(src, dest, force, underscore=False):
 			if copy_missing_files(fp, join(dest, f), force, underscore):
 				had_file = True
 		else:
-			if exists(dest_fp) and not force:
-				continue
-			print "Adding {0}".format(dest_fp)
+			if exists(dest_fp):
+				act = "add"
+				if not force:
+					continue
+				else:
+					act = "overwrite"
+			print_event(act, fp, dest_fp)
 			copyfile(fp, dest_fp)
 			had_file = True
 	return had_file
@@ -120,10 +130,157 @@ def unpackage(file_path, package_type=None):
 	# Handle the extraction
 	if package_type == "zip":
 		unzip(file_path, basedir)
+		print_event("unzip", file_path, basedir)
 	elif package_type == "tar":
 		untar(file_path, basedir)
+		print_event("untar", file_path, basedir)
 	else:
 		raise UnknownArchiveException(package_type)
 
 	# Return the destination
 	return basedir
+
+#------------------------------
+#
+# Output control
+#
+#------------------------------
+
+loc = {
+	"action": {
+		"selfupdate": "Ford System Update",
+		"upgrade": "Ford System Upgrade",
+		"init": "Ford Project Initialization [{0}]",
+		"build": "Ford Project Build [{0}]",
+		"update": "Ford Project Update [{0}]"
+	},
+	"notice": {
+		"upgrade": {
+			"nothing": "[ NIX ] Nothing upgraded."
+		},
+		"init": {
+			"nothing": "[ NIX ] No actions taken."
+		}
+	},
+	"success": {
+		"selfupdate": "[SUCCESS] An update log is available here: {0}",
+		"compiling": "[COMPILE] {0:<80}",
+		"build": "[ BUILD ] Project built successfully!"
+	},
+	"warning": {
+		"compiling": "[FULLSRC] {0:<80}",
+	},
+	"exception": {
+		"compiling": "[COMPILE] {0:<80}",
+		"selfupdate": "[ ERROR ] An error log is available here: {0}",
+		"missing_file": "[MISSING] {0:<80}",
+		"missing_dir": "[ NODIR ] {0:<80}",
+		"missing_property": "[  KEY  ] {0} does not appear in {1}",
+		"missing_template": "[MISSING] ~/.ford/templates/{0:<62}", # 62 = 80 - len(~/.ford/templates/)
+		"missing_tag": '[ NOTAG ] {1} must contain a tag with id="{0}"',
+		"missing_lib": "[ NOLIB ] {0} is not a valid library",
+		"bad_comp": "[INVALID] {0} {1} has invalid composition {{0}}",
+		"missing_resource": "[MISSING] {1} does not contain {0}",
+		"invalid_file": "[INVALID] {1:<80} File is not {0}",
+		"invalid_mime": "[INVALID] {1:<80} File is not of mime-type {0}",
+		"resource": "[ ERROR ] {0} {1}",
+		"copying": "[COPYING] {0:<80} {1}",
+		"http": "[HTTPERR] {1:<80} {0}"
+	},
+	"embed": "[ EMBED ] {0:<80} {1:<80}",
+	"overwrite": "[ FORCE ] {0:<80} {1:<80}",
+	"untar": "[ UNTAR ] {0:<80} {1:<80}",
+	"unzip": "[ UNZIP ] {0:<80} {1:<80}",
+	"add": "[ MOVED ] {0:<80} {1:<80}",
+	"wget": "[ FETCH ] {0:<80} {1:<80}",
+	"clone": "[ CLONE ] {0:<80} {1:<80}",
+	"full_lib": "[LIBRARY] {0:<80} {1:<80}",
+	"import": "[IMPORT] {0:<80} Version {1}",
+	"created": "[ MKDIR ] {0:<80}",
+	"removed": "[REMOVED] {0:<80}",
+	"symlink": "[SYMLINK] {0:<80} {1:<80}"
+}
+
+USR_PATH = expanduser("~")
+PDIR = None
+def shrt(path):
+	o = path.replace(USR_PATH, "~")
+	if PDIR is not None:
+		o = o.replace(PDIR, ".")
+	return o
+
+def clprint(msg, *args, **kwargs):
+	print msg
+
+USE_COLOR = True
+FIRST_TITLE = True
+
+def printr(msg, color, atrs=None):
+	if atrs is None:
+		atrs = []
+
+	if USE_COLOR:
+		cprint(msg, color, attrs=atrs)
+	else:
+		clprint(msg, color, attrs=atrs)
+
+def print_event(event, *args):
+	global FIRST_TITLE
+	global PDIR
+
+	l = loc[event]
+	atrs = []
+
+	if event in ["overwrite", "add"]:
+		printr(l.format(shrt(args[0]), shrt(args[1])), "cyan", atrs)
+	elif event in ["unzip", "untar", "embed", "full_lib"]:
+		printr(l.format(shrt(args[0]), shrt(args[1])), "magenta", atrs)
+	elif event in ["wget", "clone"]:
+		printr(l.format(shrt(args[0]), shrt(args[1])), "yellow", atrs)
+	elif event == "created":
+		printr(l.format(shrt(args[0])), "cyan", atrs)
+	elif event == "removed":
+		printr(l.format(shrt(args[0])), "red", atrs)
+	elif event == "symlink":
+		printr(l.format(shrt(args[0]), shrt(args[1])), "cyan", atrs)
+	elif event == "import":
+		p = args[0]
+		printr(l.format(shrt(p["name"]), p["version"]), "magenta", atrs)
+	else:
+		l = l[args[0]]
+		if event == "action":
+			if not FIRST_TITLE:
+				print ""
+
+			if args[0] not in ["selfupdate", "upgrade"]:
+				if PDIR is None:
+					PDIR = args[1].replace(USR_PATH, "~")
+				l = l.format(args[1])
+
+			FIRST_TITLE = False
+			printr(l, "white", ["bold", "underline"] + atrs)
+		elif event == "notice":
+			printr(l[args[1]], "white", atrs)
+		elif event == "embed":
+			printr(l, "green", atrs)
+		elif event == "success":
+			if args[0] == "build":
+				printr(l, "green", atrs)
+			else:
+				sa = args[1]
+				printr(l.format(sa), "green", atrs)
+		elif event == "warning":
+			printr(l.format(args[1]), "yellow", atrs)
+		elif event == "exception":
+			k = args[0]
+			if k in ["invalid_file", "missing_tag", "missing_resource"]:
+				printr(l.format(args[1], args[2]), "red", atrs)
+			elif k == "missing_property":
+				printr(l.format(args[1], pformat([2])), "red", atrs)
+			else:
+				sa = args[1]
+				printr(l.format(sa), "red", atrs)
+		else:
+			cprint(event, "green")
+			print event, ": [{0}]".format(",".join(args))
+
