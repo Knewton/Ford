@@ -62,8 +62,8 @@ def copy_missing_files(src, dest, force, underscore=False):
 			if copy_missing_files(fp, join(dest, f), force, underscore):
 				had_file = True
 		else:
+			act = "add"
 			if exists(dest_fp):
-				act = "add"
 				if not force:
 					continue
 				else:
