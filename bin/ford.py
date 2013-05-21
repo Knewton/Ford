@@ -16,16 +16,19 @@ def optparse():
 			"A development and build tool for javascript applications.",
 			"",
 			"Ford tool actions:",
+			"    upgrade: Upgrades the current user's ford resources.",
+			"             Use --force to overwrite existing resources.",
+			"             Use --skip to skip import after upgrade.",
 			"    import:  Pulls in all the packages hosted on CDNJS as ford",
 			"             ready manifests for import. Use --force to update",
 			"             the cached package listing from cdnjs.com",
-			"    upgrade: Upgrades the current user's ford resources.",
-			"             Use --force to overwrite existing resources.",
+			"             Must be run after upgrade (done automatically)",
 			"    selfup:  Performs a self-update, getting the latest Ford.",
 			"             Must be run as root.",
 			"    latest:  Performs a selfup, upgrade, and import.",
 			"             Must be run as root.",
 			"             Use --force to overwrite existing resources.",
+			"             Use --skip to skip import.",
 			"",
 			"Ford project actions:",
 			"    init:    Copies project resources from a template.",
@@ -78,27 +81,29 @@ def main():
 	utilities.USE_COLOR = not opts.colorless
 
 	is_root = getuid() == 0
+	if is_root:
+		print "Ford cannot be run as root; this is for javascript."
+		exit(1)
 
 	directory = abspath(directory)
-	if is_root:
-		if action == "self-update":
-			os.getuid()
-			selfupdate()
-			exit(0)
-		elif action == "latest":
-			selfupdate()
-			upgrade(opts.force)
+	if action == "self-update":
+		os.getuid()
+		selfupdate()
+		exit(0)
+	elif action == "latest":
+		selfupdate()
+		upgrade(opts.force)
+		if not opts.skip:
 			cdnimport(opts.force)
-			exit(0)
-	elif action in ["self-update", "latest"]:
-		print "{0} must be run as root.".format(action)
-		exit(1)
+		exit(0)
 
 	if action == "help":
 		optparse().print_help()
 		exit(0)
 	elif action == "upgrade":
 		upgrade(opts.force)
+		if not opts.skip:
+			cdnimport(opts.force)
 		exit(0)
 	elif action == "import":
 		cdnimport(opts.force)

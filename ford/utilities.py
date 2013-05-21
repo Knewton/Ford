@@ -150,25 +150,34 @@ loc = {
 	"action": {
 		"selfupdate": "Ford System Update",
 		"upgrade": "Ford System Upgrade",
+		"import": "Ford Project Import",
 		"init": "Ford Project Initialization [{0}]",
 		"build": "Ford Project Build [{0}]",
 		"update": "Ford Project Update [{0}]"
 	},
 	"notice": {
+		"import": {
+			"nothing": "[SUCCESS] No files to import."
+		},
 		"upgrade": {
-			"nothing": "[ NIX ] Nothing upgraded."
+			"nothing": "[SUCCESS] No files to upgrade."
 		},
 		"init": {
-			"nothing": "[ NIX ] No actions taken."
+			"nothing": "[SUCCESS] No initialization tasks."
 		}
 	},
 	"success": {
 		"selfupdate": "[SUCCESS] An update log is available here: {0}",
+		"upgrade": "[SUCCESS] The upgrade process finished successfully.",
+		"import": "[SUCCESS] The import process finished successfully.",
 		"compiling": "[COMPILE] {0:<80}",
 		"build": "[ BUILD ] Project built successfully!"
 	},
 	"warning": {
 		"compiling": "[FULLSRC] {0:<80}",
+	},
+	"alert": {
+		"sudo": "NOTICE! You are being asked for your password to enable sudo for updating Ford."
 	},
 	"exception": {
 		"compiling": "[COMPILE] {0:<80}",
@@ -252,7 +261,7 @@ def print_event(event, *args):
 			if not FIRST_TITLE:
 				print ""
 
-			if args[0] not in ["selfupdate", "upgrade"]:
+			if args[0] not in ["selfupdate", "upgrade", "import"]:
 				if PDIR is None:
 					PDIR = args[1].replace(USR_PATH, "~")
 				l = l.format(args[1])
@@ -260,17 +269,19 @@ def print_event(event, *args):
 			FIRST_TITLE = False
 			printr(l, "white", ["bold", "underline"] + atrs)
 		elif event == "notice":
-			printr(l[args[1]], "white", atrs)
+			printr(l[args[1]], "green", atrs)
 		elif event == "embed":
 			printr(l, "green", atrs)
 		elif event == "success":
-			if args[0] == "build":
+			if args[0] in ["upgrade", "import", "build"]:
 				printr(l, "green", atrs)
 			else:
 				sa = args[1]
 				printr(l.format(sa), "green", atrs)
 		elif event == "warning":
 			printr(l.format(args[1]), "yellow", atrs)
+		elif event == "alert":
+			printr(l, "red", atrs)
 		elif event == "exception":
 			k = args[0]
 			if k in ["invalid_file", "missing_tag", "missing_resource"]:

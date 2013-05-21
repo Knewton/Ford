@@ -25,6 +25,8 @@
 
 # The permanant web URL of the most up-to-date raw text version of this script.
 wi_uri="https://raw.github.com/Knewton/Ford/master/web_install.sh"
+# For testing
+#wi_uri="http://virtualhost.knewton.com/web_install.sh"
 
 # The name of your software.
 wi_name="Ford"
@@ -69,26 +71,24 @@ ford_zip="https://nodeload.github.com/Knewton/Ford/zip/master"
 #------------------------------
 
 # Determine if your software is already installed.
-# @ret 0 - Yes; 1 - No; 2 - Yes, but nees update
+# @ret 0 - Yes; 1 - No; 2 - Needs update; 3 - Needs reinstall
 IsSoftwareInstalled() {
-	return 1 # Force a new install every time
+	ProgramExists "ford" ; ford_installed=$?
 
-	#ProgramExists "ford" ; ford_installed=$?
+	if [ $ford_installed -eq 0 ]; then
+		# By default, return that we need an upgrade anytime the installer is
+		# run. In the future, this can probably be enhanced with a version
+		# checker, but Ford has no such capability right now
+		return 3
+		# if [ behind_current_version ]; then
+		# 	return 2
+		# else
+		# 	return 0
+		# fi
+	fi
 
-	#if [ $ford_installed -eq 0 ]; then
-	#	# By default, return that we need an upgrade anytime the installer is
-	#	# run. In the future, this can probably be enhanced with a version
-	#	# checker, but Ford has no such capability right now
-	#	return 2
-	#	# if [ behind_current_version ]; then
-	#	# 	return 2
-	#	# else
-	#	# 	return 0
-	#	# fi
-	#fi
-
-	## Not installed
-	#return 1
+	# Not installed
+	return 1
 }
 
 # Determine if the software can be installed (check dependenceis, etc).
@@ -162,16 +162,14 @@ InstallSoftware() {
 
 # Any tasks which need to be done once the install has completed.
 PostInstall() {
-	Capture ford upgrade
-	Capture ford import -f
+	Capture ford upgrade -f
 
 	return 0
 }
 
 # Whatever needs to be done to update the software
 UpdateSoftware() {
-	Capture ford upgrade
-	Capture ford import -f
+	Capture ford upgrade -f
 
 	return 0
 }
@@ -401,6 +399,7 @@ case $_wi_installed in
 	0) echo "$wi_name is already installed." ;;
 	1) _wi_action="install" ;;
 	2) _wi_action="update" ;;
+	3) _wi_action="install" ;; # Reinstall but don't count as not installed
 esac
 
 # Perform the installation actions as described
