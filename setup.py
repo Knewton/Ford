@@ -1,18 +1,9 @@
-#! /usr/bin/env python
-
-from distutils.core import setup
-from os import environ, mkdir, symlink
-from os.path import expanduser, isdir
-from distutils.sysconfig import get_python_lib
-
-def get_version():
-	"""build_version is replaced with the current build number
-	as part of the jenkins build job"""
-	build_version = 1
-	return build_version
+#!/usr/bin/env python
+from setuptools import setup
 
 setup(
 	name="ford",
+	version = "0.1",
 	description="A development and build tool for javascript applications.",
 	author="Eric Garside",
 	author_email="eric@knewton.com",
@@ -24,7 +15,7 @@ setup(
 			"scripts/*"
 		]
 	},
-	data_files=[
-		("/usr/local/bin", ["bin/ford"])
-	]
+	scripts = ["bin/ford"],
+	install_requires = ["BeautifulSoup==3.2.0", "termcolor==1.1.0"]
 )
+
