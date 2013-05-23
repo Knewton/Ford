@@ -192,6 +192,7 @@ loc = {
 		"missing_resource": "[MISSING] {1} does not contain {0}",
 		"invalid_file": "[INVALID] {1:<80} File is not {0}",
 		"invalid_mime": "[INVALID] {1:<80} File is not of mime-type {0}",
+		"not_project": "[INVALID] {0:<80} Is not a project. Try ford init?",
 		"resource": "[ ERROR ] {0} {1}",
 		"copying": "[COPYING] {0:<80} {1}",
 		"http": "[HTTPERR] {1:<80} {0}"
