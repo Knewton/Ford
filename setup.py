@@ -5,6 +5,12 @@ from os import environ, mkdir, symlink
 from os.path import expanduser, isdir
 from distutils.sysconfig import get_python_lib
 
+def get_version():
+	"""build_version is replaced with the current build number
+	as part of the jenkins build job"""
+	build_version = 1
+	return build_version
+
 setup(
 	name="ford",
 	description="A development and build tool for javascript applications.",
