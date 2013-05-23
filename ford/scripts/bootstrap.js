@@ -363,7 +363,10 @@
 	function get(path, listener, format) {
 		var xhr,
 			processor;
-		if (format.toLowerCase() === "js") {
+
+		format = format.toLowerCase();
+
+		if (format === "js") {
 			embedScript(path, listener);
 		} else {
 			processor = function () {
@@ -384,7 +387,7 @@
 						response = "";
 					}
 
-					switch (format.toLowerCase()) {
+					switch (format) {
 
 					case "json":
 						try {
@@ -402,7 +405,7 @@
 					}
 
 					if (sCode >= 200 && sCode < 300 || sCode === 304) {
-						listener.call(listener, response, format.toLowerCase());
+						listener.call(listener, response, format);
 					} else {
 						throw [sCode.toString(), "Error:", path].join(" ");
 					}

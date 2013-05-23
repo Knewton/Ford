@@ -38,7 +38,7 @@ from BeautifulSoup import BeautifulSoup, Tag
 #------------------------------
 
 from utilities import (mkdirp, read_file, write_file, call, merge_directories,
-	fix_path, unpackage, loc)
+	fix_path, unpackage, loc, printr)
 from utilities import print_event as pe
 
 #------------------------------
