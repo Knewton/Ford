@@ -5,8 +5,9 @@ from os import chdir, getuid
 from sys import exit
 from ford.utilities import mkdirp
 from ford import utilities
+from subprocess import call as subcall
 
-from ford.project import Project, upgrade, cdnimport, selfupdate
+from ford.project import Project, upgrade, cdnimport, selfupdate, makecert
 
 SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup",
 	"init", "update", "build"]
@@ -26,9 +27,11 @@ def optparse():
 			"    selfup:  Performs a self-update, getting the latest Ford.",
 			"             Must be run as root.",
 			"    latest:  Performs a selfup, upgrade, and import.",
-			"             Must be run as root.",
+			"             Requests sudo permission!",
 			"             Use --force to overwrite existing resources.",
 			"             Use --skip to skip import.",
+			"    mkcert:  Generates a self-signed certificate using OpenSSL.",
+			"             Use --force to overwrite existing resources.",
 			"",
 			"Ford project actions:",
 			"    init:    Copies project resources from a template.",
@@ -39,6 +42,11 @@ def optparse():
 			"    build:   Builds the project. Runs init and update first.",
 			"             Use --skip to skip init and update before build.",
 			"             Use --output to change build directory.",
+			"    serve:   Runs a simple web server.",
+			"             Use --port to specify the port (default: 80).",
+			"             Requires sudo if port 80 is used!",
+			"      ssl:   Runs a secure simple web server.",
+			"             Requires sudo!",
 			"",
 			"Manifets options:",
 			"    embed:   Embeds all files into the index.html to make a one",
@@ -62,6 +70,8 @@ def optparse():
 						default=False, help="Do not minify javascript.")
 	parser.add_option("--no-colors", dest="colorless", action="store_true",
 						default=False, help="Hide colors.")
+	parser.add_option("-p", "--port", dest="port", default="80",
+						help="The port to use for non SSL serving.")
 	return parser
 
 def main():
@@ -82,8 +92,15 @@ def main():
 
 	is_root = getuid() == 0
 	if is_root:
-		print "Ford cannot be run as root; this is for javascript."
-		exit(1)
+		if action == "serve":
+			subcall(["python", "-m", "SimpleHTTPServer", opts.port])
+			exit(0)
+		elif action == "ssl":
+			subcall(["ssl_server_ford"])
+			exit(0)
+		else:
+			print "Ford cannot be run as root!"
+			exit(1)
 
 	directory = abspath(directory)
 	if action == "self-update":
@@ -95,6 +112,9 @@ def main():
 		upgrade(opts.force)
 		if not opts.skip:
 			cdnimport(opts.force)
+		exit(0)
+	elif action == "mkcert":
+		makecert(opts.force)
 		exit(0)
 
 	if action == "help":
@@ -108,6 +128,17 @@ def main():
 	elif action == "import":
 		cdnimport(opts.force)
 		exit(0)
+	elif action == "serve":
+		if opts.port == "80":
+			print "You are attempting to run a server on port 80."
+			print "This requires sudo permissions; please rerun with sudo!"
+			exit(1)
+		subcall(["python", "-m", "SimpleHTTPServer", opts.port])
+		exit(0)
+	elif action == "ssl":
+		print "You are attempting to run a server on port 443."
+		print "This requires sudo permissions; please rerun with sudo!"
+		exit(1)
 
 	if not action in SUPPORTED_ACTIONS:
 		print "action must be '{0}'; '{1}' is not supported".format(

@@ -26,6 +26,7 @@ from shutil import copyfile, copytree, rmtree
 from sys import exit
 from time import time
 from urllib2 import urlopen, HTTPError
+from subprocess import call as subcall
 
 #------------------------------
 # Third-party
@@ -93,6 +94,12 @@ EXT_TEMPLATE_DIR = "Ford-Templates-master"
 CDNJS_URL = "http://cdnjs.cloudflare.com/ajax/libs/{0}/{1}/{2}"
 CDNJS_CACHE = join(USER_DIR, "cdnjs.com.packages.json")
 CDNJS_REPO = "http://cdnjs.com/packages.json"
+
+#------------------------------
+# Cert file
+#------------------------------
+
+CERT_FILE = join(USER_DIR, "localhost.pem")
 
 #------------------------------
 # Upgrade
@@ -331,6 +338,18 @@ def selfupdate():
 	else:
 		pe("exception", "selfupdate", WI_LOG)
 		exit(1)
+
+#------------------------------
+# Cert for SSL
+#------------------------------
+
+def makecert(force):
+	if force and isfile(CERT_FILE):
+		remove(CERT_FILE)
+
+	if not isfile(CERT_FILE):
+		subcall(["openssl", "req", "-new", "-x509", "-keyout", CERT_FILE,
+			"-out", CERT_FILE, "-days", "365", "-nodes"])
 
 #------------------------------
 # CDNJS import
