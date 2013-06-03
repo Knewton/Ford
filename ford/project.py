@@ -925,7 +925,7 @@ class Project(object):
 			fname = ".".join([resource, ftype])
 
 		mkdirp(resource_path)
-		err = loc["exception"]["resource"].format(lib, resource) + ":\n\t"
+		err = loc["exception"]["resource"].format(lib, resource) + ":\n"
 
 		dest = join(resource_path, fname)
 		if protocol in ["http", "https"]:
@@ -1041,6 +1041,7 @@ class Project(object):
 			if ftype == "images/" or imgs is None:
 				if isinstance(imgs, basestring) or isinstance(imgs, str):
 					path = "{0}/{1}".format(path, imgs)
+					imgs = None 
 				else:
 					path = "{0}/images".format(path)
 				if imgs is None:
