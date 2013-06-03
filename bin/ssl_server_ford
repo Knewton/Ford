@@ -21,7 +21,13 @@ class SecureHTTPServer(HTTPServer):
         #server.pem's location (containing the server private key and
         #the server certificate).
         fpem = os.path.expanduser('~/.ford/localhost.pem')
-        ctx.use_privatekey_file (fpem)
+        try:
+            ctx.use_privatekey_file (fpem)
+        except SSL.Error:
+            print "There seems to be a problem with your ford SSL cert"
+            print "Please regenerate this cert by running: "
+            print "\n\tford mkcert\n"
+            exit(1)
         ctx.use_certificate_file(fpem)
         self.socket = SSL.Connection(ctx, socket.socket(self.address_family,
                                                         self.socket_type))

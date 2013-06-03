@@ -347,6 +347,7 @@ def makecert():
 	print "\n" * 3
 	print "!" * 65
 	print "! You can leave everything blank EXCEPT the FQDN of your server !"
+	print "! This is the 'Common Name' field during certificate generation !"
 	print "! You should make this whatever name you plan on accessing your !"
 	print "! server from (Ex: localhost)                                   !"
 	print "!" * 65
