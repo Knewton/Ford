@@ -31,7 +31,6 @@ def optparse():
 			"             Use --force to overwrite existing resources.",
 			"             Use --skip to skip import.",
 			"    mkcert:  Generates a self-signed certificate using OpenSSL.",
-			"             Use --force to overwrite existing resources.",
 			"",
 			"Ford project actions:",
 			"    init:    Copies project resources from a template.",
@@ -114,7 +113,7 @@ def main():
 			cdnimport(opts.force)
 		exit(0)
 	elif action == "mkcert":
-		makecert(opts.force)
+		makecert()
 		exit(0)
 
 	if action == "help":

@@ -343,8 +343,16 @@ def selfupdate():
 # Cert for SSL
 #------------------------------
 
-def makecert(force):
-	if force and isfile(CERT_FILE):
+def makecert():
+	print "\n" * 3
+	print "!" * 65
+	print "! You can leave everything blank EXCEPT the FQDN of your server !"
+	print "! You should make this whatever name you plan on accessing your !"
+	print "! server from (Ex: localhost)                                   !"
+	print "!" * 65
+	print "\n" * 3
+
+	if isfile(CERT_FILE):
 		remove(CERT_FILE)
 
 	if not isfile(CERT_FILE):
