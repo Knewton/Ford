@@ -38,7 +38,8 @@ def optparse():
 			"             Use --template to specify a new template.",
 			"    update:  Updates external resources. Runs init first.",
 			"             Use --skip to skip init resource before build.",
-			"    build:   Builds the project. Runs init and update first.",
+			"    build:   Builds the project. Runs update first.",
+			"             Use --build to specify a different build manifest.",
 			"             Use --skip to skip init and update before build.",
 			"             Use --output to change build directory.",
 			"    serve:   Runs a simple web server.",
@@ -61,6 +62,8 @@ def optparse():
 						default=False, help="Builds without upgrading.")
 	parser.add_option("-t", "--template", dest="template",
 						help="The project template to use for init.")
+	parser.add_option("-b", "--build", dest="build", default="./manifest.json",
+						help="The manifst to use for building this project.")
 	parser.add_option("-o", "--output", dest="output", default="./output",
 						help="The directory to output built files to.")
 	parser.add_option("-e", "--embed", dest="embed", action="store_true",
@@ -144,7 +147,7 @@ def main():
 			", ".join(SUPPORTED_ACTIONS), action)
 		exit(0)
 
-	p = Project(directory)
+	p = Project(directory, opts.build)
 	if not opts.skip or action == "init":
 		if not p.init(opts.template, opts.force, action == "init"):
 			exit(1)

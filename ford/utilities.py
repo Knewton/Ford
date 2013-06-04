@@ -171,7 +171,9 @@ loc = {
 		"upgrade": "[SUCCESS] The upgrade process finished successfully.",
 		"import": "[SUCCESS] The import process finished successfully.",
 		"compiling": "[COMPILE] {0:<80}",
-		"build": "[ BUILD ] Project built successfully!"
+		"application": "[  APP  ] {0:<80}",
+		"build": "[ BUILD ] Project built successfully!",
+		"lib": "[  LIB  ] {0:<80}",
 	},
 	"warning": {
 		"compiling": "[FULLSRC] {0:<80}",
@@ -197,6 +199,7 @@ loc = {
 		"copying": "[COPYING] {0:<80} {1}",
 		"http": "[HTTPERR] {1:<80} {0}"
 	},
+	"compiling": "[ BEGIN ] {0:<80}",
 	"embed": "[ EMBED ] {0:<80} {1:<80}",
 	"overwrite": "[ FORCE ] {0:<80} {1:<80}",
 	"untar": "[ UNTAR ] {0:<80} {1:<80}",
@@ -206,6 +209,8 @@ loc = {
 	"clone": "[ CLONE ] {0:<80} {1:<80}",
 	"full_lib": "[LIBRARY] {0:<80} {1:<80}",
 	"import": "[IMPORT] {0:<80} Version {1}",
+	"parts": "[ PARTS ] {0:<80}",
+	"ignored": "[CUT OUT] {0:<80}",
 	"created": "[ MKDIR ] {0:<80}",
 	"removed": "[REMOVED] {0:<80}",
 	"symlink": "[SYMLINK] {0:<80} {1:<80}"
@@ -234,6 +239,10 @@ def printr(msg, color, atrs=None):
 	else:
 		clprint(msg, color, attrs=atrs)
 
+def set_dir(d):
+	global PDIR
+	PDIR = d.replace(USR_PATH, "~")
+
 def print_event(event, *args):
 	global FIRST_TITLE
 	global PDIR
@@ -247,10 +256,14 @@ def print_event(event, *args):
 		printr(l.format(shrt(args[0]), shrt(args[1])), "magenta", atrs)
 	elif event in ["wget", "clone"]:
 		printr(l.format(shrt(args[0]), shrt(args[1])), "yellow", atrs)
-	elif event == "created":
+	elif event in ["parts", "created"]:
 		printr(l.format(shrt(args[0])), "cyan", atrs)
+	elif event == "ignored":
+		printr(l.format(shrt(args[0])), "magenta", atrs)
 	elif event == "removed":
 		printr(l.format(shrt(args[0])), "red", atrs)
+	elif event == "compiling":
+		printr(l.format(shrt(args[0])), "white", atrs)
 	elif event == "symlink":
 		printr(l.format(shrt(args[0]), shrt(args[1])), "cyan", atrs)
 	elif event == "import":
@@ -264,8 +277,8 @@ def print_event(event, *args):
 
 			if args[0] not in ["selfupdate", "upgrade", "import"]:
 				if PDIR is None:
-					PDIR = args[1].replace(USR_PATH, "~")
-				l = l.format(args[1])
+					PDIR = dirname(shrt(args[1]))
+				l = l.format(shrt(args[1]))
 
 			FIRST_TITLE = False
 			printr(l, "white", ["bold", "underline"] + atrs)
@@ -276,6 +289,8 @@ def print_event(event, *args):
 		elif event == "success":
 			if args[0] in ["upgrade", "import", "build"]:
 				printr(l, "green", atrs)
+			elif args[0] in ["compiling"]:
+				printr(l.format(shrt(args[1])), "green", atrs)
 			else:
 				sa = args[1]
 				printr(l.format(sa), "green", atrs)

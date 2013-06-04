@@ -39,7 +39,7 @@ from BeautifulSoup import BeautifulSoup, Tag
 #------------------------------
 
 from utilities import (mkdirp, read_file, write_file, call, merge_directories,
-	fix_path, unpackage, loc, printr)
+	fix_path, unpackage, loc, printr, set_dir)
 from utilities import print_event as pe
 
 #------------------------------
@@ -66,6 +66,7 @@ __status__ = "Development"
 # System paths
 #------------------------------
 
+BUILD_TARGET = "{0}/build_targets/{1}.json"
 USER_DIR = expanduser("~/.ford")
 SCRIPT_DIR = join(USER_DIR, "scripts")
 
@@ -120,7 +121,7 @@ PROJECT_DIRS = ["lib", "manifests"]
 #------------------------------
 
 JSPACK = "window.fordPacked=true;window.fordSrc={};"
-JSFILE = "window.fordSrc['{0}']="
+JS = "window.fordSrc['{0}']="
 
 #------------------------------
 # Update and Build
@@ -519,9 +520,10 @@ class Project(object):
 	#
 	#------------------------------
 
-	def __init__(self, project_dir):
+	def __init__(self, project_dir, project_manifest):
 		# Define properties
 		self.project_dir = realpath(project_dir)
+		self.project_manifest = realpath(project_manifest)
 		self.output_dir = None
 		self.libraries = {}
 		self.libGroups = {}
@@ -530,12 +532,16 @@ class Project(object):
 		self.held_resources = {}
 		self.tmp_paths = {}
 		self.pending_resources = 0
-		self.content = {"html": {}, "css": [], "js": []}
+		self.content = None
 		self.manifest = None
 		self.build_project = False
 		self.single_file = False
 		self.rawsrc = False
 		self.update_project = True
+		self.cut_outs = []
+
+		# For output formatting
+		set_dir(self.project_dir)
 
 	#------------------------------
 	#
@@ -547,15 +553,35 @@ class Project(object):
 	# Builder utilities
 	#------------------------------
 
+	def _prepare(self):
+		self.content = {"html": {}, "css": [], "js": []}
+		self.libraries = {}
+		self.libGroups = {}
+		self.included = {}
+		self.unpacked = {}
+		self.held_resources = {}
+		self.tmp_paths = {}
+		self.pending_resources = 0
+		self.cut_outs = []
+
+		if "cut_out" in self.manifest:
+			for lib in self.manifest["cut_out"]:
+				rscs = self.manifest["cut_out"][lib]
+				for rsc in rscs:
+					for comp in rscs[rsc]:
+						s = "lib/{0}/{1}/{1}.{2}".format(lib, rsc, comp)
+						self.cut_outs.append(s)
+
 	def _manifest_flag(self, name):
 		if not name in self.manifest:
 			return False
 		return self.manifest[name]
 
-	def _compile(self, ftype):
+	def _compile(self, ftype, name):
 		cmd = ["juicer", "merge", "--force", "--document-root",
 				"'{0}'".format(self.project_dir)]
-		src_file = "{0}/application.{1}".format(self.output_dir, ftype)
+		src_file = "{0}/{2}.{1}".format(self.output_dir, ftype, name)
+		out_file = "{0}/{2}.min.{1}".format(self.output_dir, ftype, name)
 		if ftype == "js":
 			cmd += ["--skip-verification"]
 			if self._manifest_flag("rawsrc") or self.rawsrc:
@@ -566,9 +592,11 @@ class Project(object):
 		if call(cmd) == 0:
 			if self._manifest_flag("rawsrc") or self.rawsrc:
 				pe("warning", "compiling", src_file)
+				copyfile(out_file, src_file)
+				remove(out_file)
 			else:
 				pe("success", "compiling", src_file)
-			remove(src_file)
+				remove(src_file)
 		else:
 			pe("exception", "compiling", src_file)
 			exit(1)
@@ -630,45 +658,78 @@ class Project(object):
 		return doc
 
 	def _complete(self):
-		pe("action", "build", self.project_dir)
+		pe("action", "build", self.current_manifest)
 
-		path = "{0}/application".format(self.output_dir)
+		js_path, css_path, html_path = [None] * 3
+		jsn, csn = ["application"] * 2
+		htn = "index"
+		if "output" in self.manifest:
+			op = self.manifest["output"]
+			path = "{0}/application".format(self.output_dir)
+			if not (isinstance(op, basestring) or isinstance(op, str)):
+				if "js" in op:
+					jsn = op["js"]
+
+				if "css" in op:
+					csn = op["css"]
+
+				if "html" in op:
+					htn = op["html"]
+
+				js_path = "{0}/{1}".format(self.output_dir, jsn)
+				css_path = "{0}/{1}".format(self.output_dir, csn)
+				html_path = "{0}/{1}".format(self.output_dir, htn)
+		else:
+			path = "{0}/application".format(self.output_dir)
+
 		has_css, has_js = False, False
+		if css_path is not None:
+			path = css_path
 		if len(self.content["css"]):
 			css = []
+			fp = "{0}.css".format(path)
+			pe("compiling", fp)
 			for p in self.content["css"]:
-				css.append("@import url(/{1})".format(self.project_dir, p))
-			write_file("{0}.css".format(path), "\n".join(css) + "\n")
-			self._compile("css")
+				part = "{0}/{1}".format(self.project_dir, p)
+				if p not in self.cut_outs:
+					pe("parts", part)
+					css.append("@import url(/{1})".format(self.project_dir, p))
+				else:
+					pe("ignored", part)
+			write_file(fp, "\n".join(css) + "\n")
+			self._compile("css", csn)
 			has_css = True
 
+		if js_path is not None:
+			path = js_path
 		if len(self.content["js"]):
 			js = []
+			fp = "{0}.js".format(path)
+			pe("compiling", fp)
 			for p in self.content["js"]:
-				js.append(" * @depends /{1}".format(self.project_dir, p))
+				part = "{0}/{1}".format(self.project_dir, p)
+				if p not in self.cut_outs:
+					pe("parts", part)
+					js.append(" * @depends /{1}".format(self.project_dir, p))
+				else:
+					pe("ignored", part)
 			content = "/**\n{0}\n */\n".format("\n".join(js))
-			write_file("{0}.js".format(path), content)
-			self._compile("js")
+			write_file(fp, content)
+			self._compile("js", jsn)
 			has_js = True
 
-		index = "{0}/index.html"
-		src = index.format(self.project_dir)
-		if not exists(src):
-			pe("exception", "missing_dir", src)
-			exit(1)
-		index_html = BeautifulSoup(read_file(src))
+		if html_path is not None:
+			path = html_path
 
-		bootstrap = index_html.findAll(id="bootstrap")
-		if len(bootstrap) == 0:
-			pe("exception", "missing_tag", "bootstrap", "index.html")
-			exit(1)
-		bootstrap = bootstrap[0]
-		index_idx = bootstrap.parent.contents.index(bootstrap)
+		build_index = True
+		if "library" in self.manifest:
+			build_index = not self.manifest["library"]
 
 		dirs_to_copy = []
 		if "directories" in self.manifest:
 			dirs_to_copy = self.manifest["directories"]
-		dirs_to_copy.append("localization")
+		if build_index:
+			dirs_to_copy.append("localization")
 
 		for d in dirs_to_copy:
 			location = "{{0}}/{0}".format(d)
@@ -678,74 +739,99 @@ class Project(object):
 				copytree(location.format(self.project_dir),
 							location.format(self.output_dir))
 
-		use_single = self._manifest_flag("embed") or self.single_file
-		rp = []
+		if build_index:
+			index = "{{0}}/{0}.html".format(htn)
+			src = index.format(self.project_dir)
+			if not exists(src):
+				pe("exception", "missing_file", src)
+				exit(1)
+			index_html = BeautifulSoup(read_file(src))
 
-		index_page = index.format(self.output_dir)
+			bootstrap = index_html.findAll(id="bootstrap")
+			if len(bootstrap) == 0:
+				pe("exception", "missing_tag", "bootstrap",
+						"{0}.html".format(htn))
+				exit(1)
+			bootstrap = bootstrap[0]
+			index_idx = bootstrap.parent.contents.index(bootstrap)
 
-		if has_js:
-			script = Tag(index_html, "script")
-			script["type"] = "text/javascript"
-			if use_single:
-				script.append("$FRD" + str(len(rp)))
-				d = "{0}.min.js".format(path)
-				rp.append(read_file(d))
-				pe("embed", d, index_page)
-			else:
-				script["src"] = "application.min.js?_={0}".format(str(time()))
-			bootstrap.parent.insert(index_idx + 1, script)
+			use_single = self._manifest_flag("embed") or self.single_file
+			rp = []
 
-		# Package the scripts first, cause we prepend the js def later
-		if use_single and "package_scripts" in self.manifest:
-			bootstrap.parent.insert(index_idx + 1, script)
-			for f in self.manifest["package_scripts"]:
-				fpath = join(self.output_dir, f)
-				if isfile(fpath):
-					script = Tag(index_html, "script")
-					script["type"] = "text/javascript"
-					script.append(JSFILE.format(f) +  "$FRD" + str(len(rp)) + ";")
-					bootstrap.parent.insert(index_idx + 1, script)
-					rp.append(read_file(fpath))
-					pe("embed", fpath, index_page)
+			index_page = index.format(self.output_dir)
+			cb = str(time())
 
-			# Insert preface tag with defs to prepare the package.
-			script = Tag(index_html, "script")
-			script["type"] = "text/javascript"
-			script.append(JSPACK)
-			bootstrap.parent.insert(index_idx + 1, script)
+			if has_js:
+				script = Tag(index_html, "script")
+				script["type"] = "text/javascript"
+				if use_single:
+					script.append("$FRD" + str(len(rp)))
+					d = "{0}.min.js".format(path)
+					rp.append(read_file(d))
+					pe("embed", d, index_page)
+				elif self._manifest_flag("rawsrc") or self.rawsrc:
+					script["src"] = "{1}.js?_={0}".format(cb, jsn)
+				else:
+					script["src"] = "{1}.min.js?_={0}".format(cb, jsn)
+				bootstrap.parent.insert(index_idx + 1, script)
 
-		if has_css:
-			if use_single:
-				d = "{0}.min.css".format(path)
-				style = Tag(index_html, "style")
-				style["media"] = "screen, print"
-				style["type"] = "text/css"
-				style.string = read_file(d)
-				pe("embed", d, index_page)
-			else:
-				style = Tag(index_html, "link")
-				style["media"] = "screen, print"
-				style["rel"] = "stylesheet"
-				style["type"] = "text/css"
-				style["href"] = "application.min.css?_={0}".format(str(time()))
-			bootstrap.parent.insert(index_idx + 1, style)
+			# Package the scripts first, cause we prepend the js def later
+			if use_single and "package_scripts" in self.manifest:
+				bootstrap.parent.insert(index_idx + 1, script)
+				for f in self.manifest["package_scripts"]:
+					fpath = join(self.output_dir, f)
+					if isfile(fpath):
+						script = Tag(index_html, "script")
+						script["type"] = "text/javascript"
+						script.append(JS.format(f) +
+							"$FRD" + str(len(rp)) + ";")
+						bootstrap.parent.insert(index_idx + 1, script)
+						rp.append(read_file(fpath))
+						pe("embed", fpath, index_page)
 
-		# Remove the bootstrap tag
-		bootstrap.extract()
+				# Insert preface tag with defs to prepare the package.
+				script = Tag(index_html, "script")
+				script["type"] = "text/javascript"
+				script.append(JSPACK)
+				bootstrap.parent.insert(index_idx + 1, script)
 
-		# Handle component HTML
-		index_html = self._resolve_component_html(index_html)
-		write_file(index.format(self.output_dir), str(index_html))
-		pe("success", "compiling", index_page)
+			if has_css:
+				if use_single:
+					d = "{0}.min.css".format(path)
+					style = Tag(index_html, "style")
+					style["media"] = "screen, print"
+					style["type"] = "text/css"
+					style.string = read_file(d)
+					pe("embed", d, index_page)
+				else:
+					style = Tag(index_html, "link")
+					style["media"] = "screen, print"
+					style["rel"] = "stylesheet"
+					style["type"] = "text/css"
+					if self._manifest_flag("rawsrc") or self.rawsrc:
+						style["href"] = "{1}.css?_={0}".format(cb, csn)
+					else:
+						style["href"] = "{1}.min.css?_={0}".format(cb, csn)
+				bootstrap.parent.insert(index_idx + 1, style)
 
-		# Beautifulsoup doesn't do well with this
-		if len(rp):
-			fdata = read_file(index.format(self.output_dir))
-			idx = 0
-			for repl in rp:
-				fdata = fdata.replace("$FRD" + str(idx), repl)
-				idx += 1
-			write_file(index.format(self.output_dir), fdata)
+			# Remove the bootstrap tag
+			bootstrap.extract()
+
+			# Handle component HTML
+			index_html = self._resolve_component_html(index_html)
+			write_file(index.format(self.output_dir), str(index_html))
+			pe("success", "application", index_page)
+
+			# Beautifulsoup doesn't do well with this
+			if len(rp):
+				fdata = read_file(index.format(self.output_dir))
+				idx = 0
+				for repl in rp:
+					fdata = fdata.replace("$FRD" + str(idx), repl)
+					idx += 1
+				write_file(index.format(self.output_dir), fdata)
+		else:
+			pe("success", "lib", self.current_manifest)
 
 	#------------------------------
 	# Dependency management
@@ -986,14 +1072,15 @@ class Project(object):
 			resource = lib
 
 		if protocol == "git":
-			repo = self._make_tmp(uri, resource)
+			repo = self._make_tmp(uri, lib)
 			lib_target = repo
 			if not isdir(repo):
 				pe("clone", uri, repo)
 				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
-			if "root" in details:
-				self.tmp_paths[uri] = join(repo, details["root"])
+			if "root" in details and uri + "_orig" not in self.tmp_paths:
+				self.tmp_paths[uri + "_orig"] = repo
 				repo = join(repo, details["root"])
+				self.tmp_paths[uri] = repo
 
 		if protocol in ["http", "https"] and "packaged" in details:
 			url = "://".join([protocol, uri])
@@ -1041,7 +1128,7 @@ class Project(object):
 			if ftype == "images/" or imgs is None:
 				if isinstance(imgs, basestring) or isinstance(imgs, str):
 					path = "{0}/{1}".format(path, imgs)
-					imgs = None 
+					imgs = None
 				else:
 					path = "{0}/images".format(path)
 				if imgs is None:
@@ -1126,9 +1213,11 @@ class Project(object):
 				del manifest["*"]
 			if "." in manifest:
 				write_manifest = False
-			if not "skip_update" in self.manifest or lib not in self.manifest["skip_update"]:
-				for resource in manifest:
-					self._update_resource(lib, resource, manifest[resource], base)
+			if "skip_update" in self.manifest:
+				if lib not in self.manifest["skip_update"]:
+					for resource in manifest:
+						details = manifest[resource]
+						self._update_resource(lib, resource, details, base)
 		except UpdateError as e:
 			printr(e, "red")
 			exit(1)
@@ -1202,7 +1291,6 @@ class Project(object):
 			self._load_application_resources()
 
 	def _handle_project_dependencies(self):
-		self.manifest = get_manifest(self.project_dir)
 		if "includes" in self.manifest:
 			self._load_resources(self.manifest["includes"], self.build_project)
 		if self.pending_resources == 0:
@@ -1262,14 +1350,30 @@ class Project(object):
 	# Build
 	#------------------------------
 
-	def build(self, output_dir, skip=False, single=False, rawsrc=False):
-		if not skip:
+	def _build(self, output_dir, skip=False, single=False, rawsrc=False):
+		if self.update_project:
 			pe("action", "update", self.project_dir)
+		self._prepare()
 		self.build_project = True
 		self.single_file = single
 		self.rawsrc = rawsrc
-		self.update_project = not skip
 		self.output_dir = realpath(output_dir)
 		mkdirp(self.output_dir)
 		self._handle_project_dependencies()
+
+	def build(self, output_dir, skip=False, single=False, rawsrc=False):
+		self.current_manifest = self.project_manifest
+		self.manifest = get_json(self.project_manifest)
+		if "build_targets" in self.manifest:
+			build_idx = 0
+			for target in self.manifest["build_targets"]:
+				self.update_project = build_idx == 0 and not skip
+				bm = BUILD_TARGET.format(self.project_dir, target)
+				self.current_manifest = bm
+				self.manifest = get_json(bm)
+				self._build(output_dir, skip, single, rawsrc)
+				build_idx += 1
+		else:
+			self.update_project = not skip
+			self._build(output_dir, skip, single, rawsrc)
 
