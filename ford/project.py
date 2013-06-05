@@ -722,8 +722,35 @@ class Project(object):
 			path = html_path
 
 		build_index = True
+		is_lib_build = False
 		if "library" in self.manifest:
 			build_index = not self.manifest["library"]
+			is_lib_build = True
+		if "only_build_targets" in self.manifest:
+			if self.manifest["only_build_targets"]:
+				build_index = False
+
+		def include_asset(fd, flatten=False, is_file=False):
+			src = "{{0}}/{0}".format(fd)
+			if flatten:
+				dest = "{{0}}/{0}".format(basename(fd))
+			else:
+				dest = src
+
+			if exists(src.format(self.project_dir)):
+				if exists(dest.format(self.output_dir)):
+					if is_file:
+						remove(dest.format(self.output_dir))
+					else:
+						rmtree(dest.format(self.output_dir))
+				pe("asset", src.format(self.project_dir),
+						dest.format(self.output_dir))
+				if is_file:
+					copyfile(src.format(self.project_dir),
+							dest.format(self.output_dir))
+				else:
+					copytree(src.format(self.project_dir),
+							dest.format(self.output_dir))
 
 		dirs_to_copy = []
 		if "directories" in self.manifest:
@@ -731,13 +758,41 @@ class Project(object):
 		if build_index:
 			dirs_to_copy.append("localization")
 
+		flat_dirs_to_copy = []
+		if "directories_flat" in self.manifest:
+			flat_dirs_to_copy = self.manifest["directories_flat"]
+
+		files_to_copy = []
+		if "files" in self.manifest:
+			files_to_copy = self.manifest["files"]
+
+		flat_files_to_copy = []
+		if "files_flat" in self.manifest:
+			flat_files_to_copy = self.manifest["files_flat"]
+
+		if "directory_contents" in self.manifest:
+			for d in self.manifest["directory_contents"]:
+				dp = join(self.project_dir, d)
+				if isdir(dp):
+					for fn in listdir(d):
+						fp = join(dp, fn)
+						fpc = join(d, fn)
+						if isfile(fp):
+							flat_files_to_copy.append(fpc)
+						elif isdir(fp):
+							flat_dirs_to_copy.append(fpc)
+
 		for d in dirs_to_copy:
-			location = "{{0}}/{0}".format(d)
-			if exists(location.format(self.project_dir)):
-				if exists(location.format(self.output_dir)):
-					rmtree(location.format(self.output_dir))
-				copytree(location.format(self.project_dir),
-							location.format(self.output_dir))
+			include_asset(d)
+
+		for fd in flat_dirs_to_copy:
+			include_asset(fd, True)
+
+		for f in files_to_copy:
+			include_asset(f, is_file=True)
+
+		for ff in flat_files_to_copy:
+			include_asset(ff, True, True)
 
 		if build_index:
 			index = "{{0}}/{0}.html".format(htn)
@@ -830,8 +885,10 @@ class Project(object):
 					fdata = fdata.replace("$FRD" + str(idx), repl)
 					idx += 1
 				write_file(index.format(self.output_dir), fdata)
-		else:
+		elif is_lib_build:
 			pe("success", "lib", self.current_manifest)
+		else:
+			pe("success", "builder", self.current_manifest)
 
 	#------------------------------
 	# Dependency management
@@ -1197,9 +1254,10 @@ class Project(object):
 			details["comp"] = [x if x != "images/" else "images" for x in comp]
 
 	def _update_library(self, lib):
-		manifest_path = "{0}/manifests/{1}.json".format(self.project_dir, lib)
+		tpl = "{0}/manifests/{1}.json"
+		manifest_path = tpl.format(self.project_dir, lib)
 		if not exists(manifest_path):
-			manifest_path = "{0}/manifests/{1}.json".format(USER_DIR, lib)
+			manifest_path = tpl.format(USER_DIR, lib)
 		try:
 			manifest = get_json(manifest_path)
 		except:
@@ -1213,11 +1271,14 @@ class Project(object):
 				del manifest["*"]
 			if "." in manifest:
 				write_manifest = False
+			do_update = True
 			if "skip_update" in self.manifest:
-				if lib not in self.manifest["skip_update"]:
-					for resource in manifest:
-						details = manifest[resource]
-						self._update_resource(lib, resource, details, base)
+				if lib in self.manifest["skip_update"]:
+					do_update = False
+			if do_update:
+				for resource in manifest:
+					details = manifest[resource]
+					self._update_resource(lib, resource, details, base)
 		except UpdateError as e:
 			printr(e, "red")
 			exit(1)
@@ -1344,26 +1405,38 @@ class Project(object):
 
 	def update(self):
 		pe("action", "update", self.project_dir)
+		self.current_manifest = self.project_manifest
+		self.manifest = get_json(self.project_manifest)
 		self._handle_project_dependencies()
 
 	#------------------------------
 	# Build
 	#------------------------------
 
-	def _build(self, output_dir, skip=False, single=False, rawsrc=False):
+	def _build(self):
 		if self.update_project:
 			pe("action", "update", self.project_dir)
 		self._prepare()
 		self.build_project = True
-		self.single_file = single
-		self.rawsrc = rawsrc
-		self.output_dir = realpath(output_dir)
-		mkdirp(self.output_dir)
 		self._handle_project_dependencies()
 
-	def build(self, output_dir, skip=False, single=False, rawsrc=False):
+	def build(self, out_dir, skip=False, embed=False, rawsrc=False, cln=False):
 		self.current_manifest = self.project_manifest
 		self.manifest = get_json(self.project_manifest)
+		self.single_file = embed
+		self.rawsrc = rawsrc
+		self.output_dir = realpath(out_dir)
+		rm_output = cln
+		if not rm_output:
+			if "clean_build" in self.manifest and self.manifest["clean_build"]:
+				rm_output = True
+		if rm_output:
+			if isdir(self.output_dir):
+				pe("action", "buildprep")
+				pe("removed", self.output_dir)
+				rmtree(self.output_dir)
+				pe("created", self.output_dir)
+		mkdirp(self.output_dir)
 		if "build_targets" in self.manifest:
 			build_idx = 0
 			for target in self.manifest["build_targets"]:
@@ -1371,9 +1444,15 @@ class Project(object):
 				bm = BUILD_TARGET.format(self.project_dir, target)
 				self.current_manifest = bm
 				self.manifest = get_json(bm)
-				self._build(output_dir, skip, single, rawsrc)
+				self._build()
 				build_idx += 1
+			self.current_manifest = self.project_manifest
+			self.manifest = get_json(self.project_manifest)
+			if "only_build_targets" in self.manifest:
+				if self.manifest["only_build_targets"]:
+					del self.manifest["includes"]
+			self._build()
 		else:
 			self.update_project = not skip
-			self._build(output_dir, skip, single, rawsrc)
+			self._build()
 

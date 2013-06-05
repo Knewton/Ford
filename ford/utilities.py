@@ -149,6 +149,7 @@ def unpackage(file_path, package_type=None):
 loc = {
 	"action": {
 		"selfupdate": "Ford System Update",
+		"buildprep": "Ford Build Preparation",
 		"upgrade": "Ford System Upgrade",
 		"import": "Ford Project Import",
 		"init": "Ford Project Initialization [{0}]",
@@ -172,6 +173,7 @@ loc = {
 		"import": "[SUCCESS] The import process finished successfully.",
 		"compiling": "[COMPILE] {0:<80}",
 		"application": "[  APP  ] {0:<80}",
+		"builder": "[BUILDER] {0:<80}",
 		"build": "[ BUILD ] Project built successfully!",
 		"lib": "[  LIB  ] {0:<80}",
 	},
@@ -205,6 +207,7 @@ loc = {
 	"untar": "[ UNTAR ] {0:<80} {1:<80}",
 	"unzip": "[ UNZIP ] {0:<80} {1:<80}",
 	"add": "[ MOVED ] {0:<80} {1:<80}",
+	"asset": "[ ASSET ] {0:<80} {1:<80}",
 	"wget": "[ FETCH ] {0:<80} {1:<80}",
 	"clone": "[ CLONE ] {0:<80} {1:<80}",
 	"full_lib": "[LIBRARY] {0:<80} {1:<80}",
@@ -254,7 +257,7 @@ def print_event(event, *args):
 		printr(l.format(shrt(args[0]), shrt(args[1])), "cyan", atrs)
 	elif event in ["unzip", "untar", "embed", "full_lib"]:
 		printr(l.format(shrt(args[0]), shrt(args[1])), "magenta", atrs)
-	elif event in ["wget", "clone"]:
+	elif event in ["wget", "clone", "asset"]:
 		printr(l.format(shrt(args[0]), shrt(args[1])), "yellow", atrs)
 	elif event in ["parts", "created"]:
 		printr(l.format(shrt(args[0])), "cyan", atrs)
@@ -275,7 +278,7 @@ def print_event(event, *args):
 			if not FIRST_TITLE:
 				print ""
 
-			if args[0] not in ["selfupdate", "upgrade", "import"]:
+			if args[0] not in ["buildprep", "selfupdate", "upgrade", "import"]:
 				if PDIR is None:
 					PDIR = dirname(shrt(args[1]))
 				l = l.format(shrt(args[1]))

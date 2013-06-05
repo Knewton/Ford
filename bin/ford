@@ -41,6 +41,7 @@ def optparse():
 			"    build:   Builds the project. Runs update first.",
 			"             Use --build to specify a different build manifest.",
 			"             Use --skip to skip init and update before build.",
+			"             Use --clean to make a fresh build directory.",
 			"             Use --output to change build directory.",
 			"    serve:   Runs a simple web server.",
 			"             Use --port to specify the port (default: 80).",
@@ -64,6 +65,8 @@ def optparse():
 						help="The project template to use for init.")
 	parser.add_option("-b", "--build", dest="build", default="./manifest.json",
 						help="The manifst to use for building this project.")
+	parser.add_option("-c", "--clean", dest="clean", action="store_true",
+						default=False, help="Clear output dir before build.")
 	parser.add_option("-o", "--output", dest="output", default="./output",
 						help="The directory to output built files to.")
 	parser.add_option("-e", "--embed", dest="embed", action="store_true",
@@ -158,7 +161,8 @@ def main():
 	if action == "update":
 		p.update()
 	else:
-		p.build(abspath(opts.output), opts.skip, opts.embed, opts.rawsrc)
+		p.build(abspath(opts.output),
+				opts.skip, opts.embed, opts.rawsrc, opts.clean)
 
 	exit(0)
 
