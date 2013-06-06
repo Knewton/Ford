@@ -1429,6 +1429,7 @@ class Project(object):
 		self.current_manifest = self.project_manifest
 		self.manifest = get_json(self.project_manifest)
 		self._handle_project_dependencies()
+		self._clean_tmp()
 
 	#------------------------------
 	# Build
