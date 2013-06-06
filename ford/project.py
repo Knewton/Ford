@@ -27,6 +27,7 @@ from sys import exit
 from time import time
 from urllib2 import urlopen, HTTPError
 from subprocess import call as subcall
+from coffeescript import compile as coffeecc
 
 #------------------------------
 # Third-party
@@ -127,8 +128,9 @@ JS = "window.fordSrc['{0}']="
 # Update and Build
 #------------------------------
 
-VALID_COMPS = ["html", "css", "js", "images"]
+VALID_COMPS = ["html", "css", "js", "coffee", "images"]
 VALID_MIME = {
+	"coffee": ["text/plain", "text/x-coffeescript", "text/coffeescript"],
 	"js": ["text/plain", "application/x-javascript", "text/javascript",
 		"application/javascript"],
 	"json": ["application/json"],
@@ -1001,6 +1003,18 @@ class Project(object):
 			for ftype in comp:
 				if ftype == "js":
 					self.content["js"].append("{0}.js".format(path))
+				elif ftype == "coffee":
+					repo = self._make_tmp("_coffeecc", join("_coffeecc", lib))
+					if not isdir(repo):
+						mkdirp(repo)
+
+					src = "{0}.coffee".format(path)
+					dest = "{0}/{1}.js".format(repo, resource)
+
+					write_file(dest, coffeecc(read_file(src)))
+					relative_dest = dest.replace(self.project_dir + "/", "")
+
+					self.content["js"].append(relative_dest)
 				elif ftype == "css":
 					self.content["css"].append("{0}.css".format(path))
 				elif ftype == "html":
@@ -1388,6 +1402,13 @@ class Project(object):
 			has_any = True
 		if merge_directories(SCRIPT_DIR, self.project_dir, None, True, True):
 			has_any = True
+
+		coffeeSrc = join(USER_DIR, "coffee-script.js")
+		coffeeDest = join(self.project_dir, "coffee-script.js")
+
+		pe("overwrite", coffeeSrc, coffeeDest)
+		copyfile(coffeeSrc, coffeeDest)
+
 		for d in PROJECT_DIRS:
 			path = join(self.project_dir, d)
 			mkdirp(path)

@@ -32,6 +32,12 @@
 		 */
 		RX_IMAGE = /url\(["']?images\/([^'")]*)["']?\)/g,
 
+		/**
+		 * Used to remove the cache buster from a URL.
+		 * @type {RegExp}
+		 */
+		RX_CACHEBUST = /_=[0-9]+/,
+
 	//------------------------------
 	//
 	// Properties
@@ -41,6 +47,11 @@
 	//------------------------------
 	// System
 	//------------------------------
+
+		/**
+		 * Detemrine if the dom is ready.
+		 */
+		isDomReady = false,
 
 		/**
 		 * Have all resources been processed?
@@ -75,6 +86,13 @@
 		 * @type {Array<Object<string, string|function()>}
 		 */
 		scripts = [],
+
+		/**
+		 * Listeners pending execution. Used for pulling in coffeescript
+		 * interpreter.
+		 * @type {Array<*>}
+		 */
+		waiting,
 
 	//------------------------------
 	// Application
@@ -172,6 +190,20 @@
 	//------------------------------
 	// Utilities
 	//------------------------------
+
+	/**
+	 * Cleans up a URL for presentation.
+	 * @param {string} url The url to clean.
+	 * @return url The cleaned up url.
+	 */
+	function cleanURL(url) {
+		url = url.replace(RX_CACHEBUST, "").replace("?&", "?");
+		if (url.substr(-1) === "?") {
+			url = url.substr(0, url.length - 1);
+		}
+
+		return url;
+	}
 
 	/**
 	 * Takes the ["foo.", ["a", "b"]] shorthand and expands it into the
@@ -355,6 +387,65 @@
 	}
 
 	/**
+	 * Handles the compilation of CoffeeScript. Used to provide a central place
+	 * to handle errors.
+	 * @param {string} src The coffeescript to compile.
+	 * @param {string} path The path to the file (used in case of error).
+	 */
+	function csCompile(src, path) {
+		try {
+			CoffeeScript.eval(src);
+		} catch (e) {
+			throw ["CoffeeScript [", cleanURL(path), "]: ", e].join("");
+		}
+	}
+
+	/**
+	 * Triggered when the coffeescript interpreter is included. CoffeeScript
+	 * should only get included when it's needed, meaning there should always
+	 * be an item in the waiting listeners queue.
+	 *
+	 * Additionally, it's usually the case that DomReady has
+	 * triggered well before the bootstrap includes the coffeescript
+	 * processor. Run a bit of coffee script to "activate" any inline scripts.
+	 */
+	function csProcessor() {
+		var listener = waiting[0],
+			response = waiting[1],
+			format = waiting[2],
+			path = waiting[3];
+		waiting = null;
+
+		if (isDomReady) {
+			// This kicks off the inline script evaluation for coffeescript
+			// This needs be run only when coffeescript is included after the
+			// DOM has readied.
+			CoffeeScript.eval([
+				"scripts = window.document.getElementsByTagName 'script'",
+				"ctypes = ['text/coffeescript', 'text/literate-coffeescript']",
+				"coffees = (s for s in scripts when s.type in ctypes)",
+				"index = 0",
+				"length = coffees.length",
+				"do execute = ->",
+				"  script = coffees[index++]",
+				"  mt = script?.type",
+				"  if mt in ctypes",
+				"    options = {literate: mt is 'text/literate-coffeescript'}",
+				"    if script.src",
+				"      CoffeeScript.load script.src, execute, options",
+				"    else",
+				"      options.sourceFiles = ['embedded']",
+				"      CoffeeScript.run script.innerHTML, options",
+				"      execute()",
+				"null"
+			].join("\n"));
+		}
+
+		csCompile(response, path);
+		listener.call(listener, response, format);
+	}
+
+	/**
 	 * Performs a get request using AJAX.
 	 * @param {string} path The path to the file to load.
 	 * @param {function({string|Object|Array})} listener A listener.
@@ -371,7 +462,8 @@
 		} else {
 			processor = function () {
 				if (xhr.readyState === 4) {
-					var sCode, response, pathing = path.split("/");
+					var sCode, response, pathing = path.split("/"),
+						triggerListener = true;
 					pathing.pop();
 					pathing = pathing.join("/");
 
@@ -393,7 +485,7 @@
 						try {
 							response = JSON.parse(response);
 						} catch (e) {
-							throw path + " is invalid JSON";
+							throw cleanURL(path) + " is invalid JSON";
 						}
 						break;
 
@@ -402,12 +494,26 @@
 							"url(" + pathing + "/images/$1)");
 						break;
 
+					case "coffee":
+						if (!window.CoffeeScript) {
+							triggerListener = false;
+							get("coffee-script.js", csProcessor, "js");
+						} else {
+							csCompile(response, path);
+						}
+						break;
+
 					}
 
 					if (sCode >= 200 && sCode < 300 || sCode === 304) {
-						listener.call(listener, response, format);
+						if (triggerListener) {
+							listener.call(listener, response, format);
+						} else {
+							waiting = [listener, response, format, path];
+						}
 					} else {
-						throw [sCode.toString(), "Error:", path].join(" ");
+						throw [sCode.toString(), "Error:", cleanURL(path)]
+								.join(" ");
 					}
 				}
 			}
@@ -1109,6 +1215,16 @@
 	// Event bindings
 	//
 	//------------------------------
+
+	if (window.addEventListener) {
+		window.addEventListener("DOMContentLoaded", function () {
+			isDomReady = true;
+		}, false);
+	} else {
+		window.attachEvent("onload", function () {
+			isDomReady = true;
+		});
+	}
 
 	//------------------------------
 	//

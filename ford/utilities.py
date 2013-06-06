@@ -184,21 +184,21 @@ loc = {
 		"sudo": "NOTICE! You are being asked for your password to enable sudo for updating Ford."
 	},
 	"exception": {
-		"compiling": "[COMPILE] {0:<80}",
+		"compiling": "[ERR MIN] {0:<80}",
 		"selfupdate": "[ ERROR ] An error log is available here: {0}",
 		"missing_file": "[MISSING] {0:<80}",
-		"missing_dir": "[ NODIR ] {0:<80}",
-		"missing_property": "[  KEY  ] {0} does not appear in {1}",
+		"missing_dir": "[ERR DIR] {0:<80}",
+		"missing_property": "[ERR KEY] {0} does not appear in {1}",
 		"missing_template": "[MISSING] ~/.ford/templates/{0:<62}", # 62 = 80 - len(~/.ford/templates/)
-		"missing_tag": '[ NOTAG ] {1} must contain a tag with id="{0}"',
-		"missing_lib": "[ NOLIB ] {0} is not a valid library",
+		"missing_tag": '[ERR TAG] {1} must contain a tag with id="{0}"',
+		"missing_lib": "[ERR LIB] {0} is not a valid library",
 		"bad_comp": "[INVALID] {0} {1} has invalid composition {{0}}",
 		"missing_resource": "[MISSING] {1} does not contain {0}",
 		"invalid_file": "[INVALID] {1:<80} File is not {0}",
 		"invalid_mime": "[INVALID] {1:<80} File is not of mime-type {0}",
 		"not_project": "[INVALID] {0:<80} Is not a project. Try ford init?",
 		"resource": "[ ERROR ] {0} {1}",
-		"copying": "[COPYING] {0:<80} {1}",
+		"copying": "[NO COPY] {0:<80} {1}",
 		"http": "[HTTPERR] {1:<80} {0}"
 	},
 	"compiling": "[ BEGIN ] {0:<80}",
@@ -222,9 +222,11 @@ loc = {
 USR_PATH = expanduser("~")
 PDIR = None
 def shrt(path):
+	print path
 	o = path.replace(USR_PATH, "~")
 	if PDIR is not None:
 		o = o.replace(PDIR, ".")
+	print o
 	return o
 
 def clprint(msg, *args, **kwargs):
