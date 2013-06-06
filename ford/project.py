@@ -804,6 +804,15 @@ class Project(object):
 				exit(1)
 			index_html = BeautifulSoup(read_file(src))
 
+			# process inline coffeescript tags
+			cscripts = index_html.findAll(type="text/coffeescript")
+			for cscript in cscripts:
+				script = Tag(index_html, "script")
+				script["type"] = "text/javascript"
+				script.string = coffeecc(cscript.string)
+				cscript.replaceWith(script)
+			index_html = BeautifulSoup(str(index_html))
+
 			bootstrap = index_html.findAll(id="bootstrap")
 			if len(bootstrap) == 0:
 				pe("exception", "missing_tag", "bootstrap",
