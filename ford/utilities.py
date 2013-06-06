@@ -222,11 +222,9 @@ loc = {
 USR_PATH = expanduser("~")
 PDIR = None
 def shrt(path):
-	print path
 	o = path.replace(USR_PATH, "~")
 	if PDIR is not None:
 		o = o.replace(PDIR, ".")
-	print o
 	return o
 
 def clprint(msg, *args, **kwargs):
