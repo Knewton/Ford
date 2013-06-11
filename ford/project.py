@@ -175,7 +175,7 @@ def in_cache(lib, resource, proj, full_lib=False):
 	lib_dir = join(CACHE_DIR, lib)
 	if lib not in cache_libs:
 		try:
-			m = get_manifest(lib_dir)
+			m = get_manifest(lib_dir, True)
 			cache_libs[lib] = expand_manifest(lib, m, proj)
 		except:
 			if lib in cache_libs:
@@ -258,18 +258,20 @@ def expand_manifest(lib, m, project):
 
 	return new_manifest
 
-def get_json(fp):
+def get_json(fp, silent=False):
 	if not exists(fp):
-		pe("exception", "missing_file", fp)
+		if not silent:
+			pe("exception", "missing_file", fp)
 		exit(1)
 	try:
 		return loads(read_file(fp))
 	except ValueError:
-		pe("exception", "invalid_file", "json", fp)
+		if not silent:
+			pe("exception", "invalid_file", "json", fp)
 		exit(1)
 
-def get_manifest(lib):
-	return get_json("{0}/manifest.json".format(lib))
+def get_manifest(lib, silent=False):
+	return get_json("{0}/manifest.json".format(lib), silent)
 
 def split_uri(uri):
 	# use git for blah.com/foo.git
@@ -303,6 +305,7 @@ def mime_valid(expected, ftype):
 			return True
 	return False
 
+wget_cache = {}
 def wget(url, ftype, dest):
 	try:
 		pe("wget", url, dest)
@@ -1078,6 +1081,7 @@ class Project(object):
 
 	def _get(self, lib, resource, protocol, uri, ftype, fp=None, img=None,
 			link=False):
+		global wget_cache
 		path = lib_path(lib)
 		resource_path = join(self.project_dir, path, resource)
 		cache_path = join(CACHE_DIR, lib, resource)
@@ -1134,15 +1138,20 @@ class Project(object):
 				get_cache = True
 				if in_cache(lib, resource, self):
 					if self.update_cache:
-						rmtree(cache_path)
+						if isdir(cache_path) and cache_path not in wget_cache:
+							wget_cache[cache_path] = True
+							pe("removed", cache_path)
+							rmtree(cache_path)
 					else:
 						get_cache = False
 
 				if get_cache:
+					do_get = False
 					mkdirp(cache_path)
 					wget(url, ftype, cache_dest)
-
-				if in_cache(lib, resource, self):
+					pe("add", cache_dest, dest)
+					copyfile(cache_dest, dest)
+				elif in_cache(lib, resource, self):
 					do_get = False
 					pe("add", cache_dest, dest)
 					copyfile(cache_dest, dest)
