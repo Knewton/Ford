@@ -552,7 +552,6 @@ class Project(object):
 		self.project_manifest = realpath(project_manifest)
 		self.output_dir = None
 		self.libraries = {}
-		self.libGroups = {}
 		self.included = {}
 		self.unpacked = {}
 		self.held_resources = {}
@@ -582,9 +581,10 @@ class Project(object):
 	#------------------------------
 
 	def _prepare(self):
+		global lib_groups
+		lib_groups = {}
 		self.content = {"html": {}, "css": [], "js": []}
 		self.libraries = {}
-		self.libGroups = {}
 		self.included = {}
 		self.unpacked = {}
 		self.held_resources = {}
@@ -635,11 +635,11 @@ class Project(object):
 		lib = parts.pop(0)
 		group = "-".join(parts)
 
-		if not lib in self.libGroups:
-			pe("exception", "missing_property", lib, self.libGroups)
+		if not lib in lib_groups:
+			pe("exception", "missing_property", lib, lib_groups)
 			exit(1)
 
-		groups = self.libGroups[lib]
+		groups = lib_groups[lib]
 
 		if not group in groups:
 			pe("exception", "missing_property", group, group)
