@@ -498,8 +498,6 @@ def get_external(force=False):
 	src = "/tmp/ford_manifests/{0}".format(EXT_MANIFEST_DIR)
 	ret = merge_directories(src, "~/.ford/manifests", None, force)
 
-	pe("removed", dest)
-	remove(dest)
 	pe("removed", manifests)
 	rmtree(manifests)
 
@@ -509,8 +507,6 @@ def get_external(force=False):
 	src = "/tmp/ford_templates/{0}".format(EXT_TEMPLATE_DIR)
 	ret = merge_directories(src, "~/.ford/templates", None, force)
 
-	pe("removed", dest)
-	remove(dest)
 	pe("removed", templates)
 	rmtree(templates)
 
