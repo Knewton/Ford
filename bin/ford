@@ -38,11 +38,15 @@ def optparse():
 			"             Use --template to specify a new template.",
 			"    update:  Updates external resources. Runs init first.",
 			"             Use --skip to skip init resource before build.",
+			"             Use --no-cache to skip using the Ford cache.",
+			"             Use --update-cache to update resource in the cache.",
 			"    build:   Builds the project. Runs update first.",
 			"             Use --build to specify a different build manifest.",
 			"             Use --skip to skip init and update before build.",
 			"             Use --clean to make a fresh build directory.",
 			"             Use --output to change build directory.",
+			"             Use --no-cache to skip using the Ford cache.",
+			"             Use --update-cache to update resource in the cache.",
 			"    serve:   Runs a simple web server.",
 			"             Use --port to specify the port (default: 80).",
 			"             Requires sudo if port 80 is used!",
@@ -77,6 +81,10 @@ def optparse():
 						default=False, help="Hide colors.")
 	parser.add_option("-p", "--port", dest="port", default="80",
 						help="The port to use for non SSL serving.")
+	parser.add_option("-n", "--no-cache", dest="fresh", action="store_true",
+						default=False, help="Skip using the Ford cache.")
+	parser.add_option("-u", "--update-cache", dest="bust", action="store_true",
+						default=False, help="Update the Ford cache.")
 	return parser
 
 def main():
@@ -157,6 +165,10 @@ def main():
 
 	if action == "init":
 		exit(0)
+
+	# Set the project caching options
+	p.from_cache = not opts.fresh
+	p.update_cache = opts.bust
 
 	if action == "update":
 		p.update()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from os.path import (expanduser, isdir, exists, join, abspath, splitext,
 	basename, dirname)
-from os import mkdir, makedirs, listdir
+from os import mkdir, makedirs, listdir, remove
 from errno import EEXIST
 from subprocess import Popen, PIPE, STDOUT
 from types import ListType
@@ -92,12 +92,12 @@ def merge_directories(src, dest, dirs=None, force=False, underscore=False):
 			made_change = True
 	return made_change
 
-def create_archive_basedir(file_path):
+def create_archive_basedir(file_path, dry=False):
 	"""Given an archive, creates a sibling directory for clean checkout"""
 	file_name, ext = splitext(basename(file_path))
 	basedir = join(dirname(file_path), file_name)
 
-	if not isdir(basedir):
+	if not isdir(basedir) and not dry:
 		makedirs(basedir)
 
 	return basedir
@@ -115,7 +115,7 @@ def untar(archive, path):
 class UnknownArchiveException(Exception):
 	pass
 
-def unpackage(file_path, package_type=None):
+def unpackage(file_path, package_type=None, dry=False):
 	"""Unpackages an archive into a sibling directory of the same name."""
 	if package_type is None:
 		if ".tar" in file_path:
@@ -125,17 +125,20 @@ def unpackage(file_path, package_type=None):
 			package_type = ext[1:] # Remove the . from .txt
 
 	# Create a sibling directory for extraction
-	basedir = create_archive_basedir(file_path)
+	basedir = create_archive_basedir(file_path, dry)
 
 	# Handle the extraction
-	if package_type == "zip":
-		unzip(file_path, basedir)
-		print_event("unzip", file_path, basedir)
-	elif package_type == "tar":
-		untar(file_path, basedir)
-		print_event("untar", file_path, basedir)
-	else:
-		raise UnknownArchiveException(package_type)
+	if not dry:
+		if package_type == "zip":
+			unzip(file_path, basedir)
+			print_event("unzip", file_path, basedir)
+		elif package_type == "tar":
+			untar(file_path, basedir)
+			print_event("untar", file_path, basedir)
+		else:
+			raise UnknownArchiveException(package_type)
+		print_event("removed", file_path)
+		remove(file_path)
 
 	# Return the destination
 	return basedir

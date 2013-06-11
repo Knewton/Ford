@@ -70,6 +70,7 @@ __status__ = "Development"
 BUILD_TARGET = "{0}/build_targets/{1}.json"
 USER_DIR = expanduser("~/.ford")
 SCRIPT_DIR = join(USER_DIR, "scripts")
+CACHE_DIR = join(USER_DIR, "cache")
 
 #------------------------------
 # Web Installer
@@ -164,6 +165,29 @@ for t in CUSTOM_TAGS:
 #------------------------------
 
 #------------------------------
+# Cache
+#------------------------------
+
+cache_libs = {}
+def in_cache(lib, resource, proj, full_lib=False):
+	global cache_libs
+
+	lib_dir = join(CACHE_DIR, lib)
+	if lib not in cache_libs:
+		try:
+			m = get_manifest(lib_dir)
+			cache_libs[lib] = expand_manifest(lib, m, proj)
+		except:
+			if lib in cache_libs:
+				del cache_libs[lib]
+			return False
+
+	if full_lib:
+		return True
+
+	return resource in cache_libs[lib]
+
+#------------------------------
 # Generic
 #------------------------------
 
@@ -199,7 +223,9 @@ def expand_libs(libs, project):
 
 	return libs
 
+lib_groups = {}
 def expand_manifest(lib, m, project):
+	global lib_groups
 	new_manifest = {}
 	lib_resources = []
 
@@ -212,9 +238,9 @@ def expand_manifest(lib, m, project):
 			if "resources" in v:
 				resources = v["resources"]
 				gk = k[1:]
-				if lib not in project.libGroups:
-					project.libGroups[lib] = {}
-				project.libGroups[lib][gk] = resources
+				if lib not in lib_groups:
+					lib_groups[lib] = {}
+				lib_groups[lib][gk] = resources
 				del v["resources"]
 				lib_resources += resources
 
@@ -231,7 +257,6 @@ def expand_manifest(lib, m, project):
 		new_manifest["application"]["reqs"]["."] = lib_resources
 
 	return new_manifest
-
 
 def get_json(fp):
 	if not exists(fp):
@@ -538,6 +563,8 @@ class Project(object):
 		self.manifest = None
 		self.build_project = False
 		self.single_file = False
+		self.from_cache = True
+		self.update_cache = False
 		self.rawsrc = False
 		self.update_project = True
 		self.cut_outs = []
@@ -905,8 +932,14 @@ class Project(object):
 	# Dependency management
 	#------------------------------
 
-	def _make_tmp(self, uri=None, rsc=None, rm=False):
-		fp = join(self.project_dir, "tmp")
+	def _tmp(self, uri=None, rsc=None, rm=False):
+		self._make_tmp(self, uri, rsc, rm, False)
+
+	def _make_tmp(self, uri=None, rsc=None, rm=False, can_cache=True):
+		if self.from_cache and can_cache:
+			fp = CACHE_DIR
+		else:
+			fp = join(self.project_dir, "tmp")
 		if rm:
 			if exists(fp):
 				pe("removed", fp)
@@ -926,7 +959,9 @@ class Project(object):
 		return fp
 
 	def _clean_tmp(self):
-		self._make_tmp(rm=True)
+		# Don't delete the cache normally
+		if not self.from_cache:
+			self._make_tmp(rm=True)
 
 	def _load_application_resources(self):
 		if self.build_project:
@@ -1013,7 +1048,7 @@ class Project(object):
 				if ftype == "js":
 					self.content["js"].append("{0}.js".format(path))
 				elif ftype == "coffee":
-					repo = self._make_tmp("_coffeecc", join("_coffeecc", lib))
+					repo = self._tmp("_coffeecc", join("_coffeecc", lib))
 					if not isdir(repo):
 						mkdirp(repo)
 
@@ -1049,6 +1084,7 @@ class Project(object):
 			link=False):
 		path = lib_path(lib)
 		resource_path = join(self.project_dir, path, resource)
+		cache_path = join(CACHE_DIR, lib, resource)
 
 		if fp is not None:
 			# Append resource name if the pointer ends with a slash
@@ -1094,9 +1130,30 @@ class Project(object):
 		err = loc["exception"]["resource"].format(lib, resource) + ":\n"
 
 		dest = join(resource_path, fname)
+		cache_dest = join(cache_path, fname)
 		if protocol in ["http", "https"]:
 			url = "://".join([protocol, uri])
-			wget(url, ftype, dest)
+			do_get = True
+			if self.from_cache:
+				get_cache = True
+				if in_cache(lib, resource, self):
+					if self.update_cache:
+						rmtree(cache_path)
+					else:
+						get_cache = False
+
+				if get_cache:
+					mkdirp(cache_path)
+					wget(url, ftype, cache_dest)
+
+				if in_cache(lib, resource, self):
+					do_get = False
+					pe("add", cache_dest, dest)
+					copyfile(cache_dest, dest)
+
+			if do_get:
+				wget(url, ftype, dest)
+
 		elif protocol == "file":
 			if not isfile(uri):
 				raise UpdateError(err +
@@ -1151,9 +1208,20 @@ class Project(object):
 			full_library = True
 			resource = lib
 
+		do_cache_updates = True
+		is_in_cache = False
+		if self.from_cache:
+			if in_cache(lib, resource, self, full_library):
+				is_in_cache = True
+				do_cache_updates = self.update_cache
+
 		if protocol == "git":
 			repo = self._make_tmp(uri, lib)
 			lib_target = repo
+
+			if isdir(repo) and do_cache_updates:
+				rmtree(repo)
+
 			if not isdir(repo):
 				pe("clone", uri, repo)
 				call(["git", "clone", "'{0}' '{1}'".format(uri, repo)])
@@ -1165,10 +1233,21 @@ class Project(object):
 		if protocol in ["http", "https"] and "packaged" in details:
 			url = "://".join([protocol, uri])
 			protocol = "file"
+
 			dest = self._make_tmp(uri, lib) + "." + details["packaged"]
+			web_dir = unpackage(dest, dry=True)
+
+			if isdir(web_dir):
+				if not dest in self.unpacked:
+					if do_cache_updates:
+						rmtree(web_dir)
+					else:
+						self.unpacked[dest] = web_dir
+
 			if not dest in self.unpacked:
 				wget(url, details["packaged"], dest)
 				self.unpacked[dest] = unpackage(dest)
+
 			uri = self.unpacked[dest]
 			append_name = True
 			if "root" in details:
@@ -1307,8 +1386,12 @@ class Project(object):
 			exit(1)
 
 		lib_manifest = join(self.project_dir, lib_path(lib), "manifest.json")
+		cache_manifest = join(CACHE_DIR, lib, "manifest.json")
 		if write_manifest:
-			write_file(lib_manifest, dumps(manifest))
+			raw_json = dumps(manifest)
+			write_file(lib_manifest, raw_json)
+			if self.from_cache:
+				write_file(cache_manifest, raw_json)
 		return lib_manifest
 
 	def _include_library_resource(self, lib, resource):
