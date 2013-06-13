@@ -932,7 +932,7 @@ class Project(object):
 	#------------------------------
 
 	def _tmp(self, uri=None, rsc=None, rm=False):
-		self._make_tmp(self, uri, rsc, rm, False)
+		self._make_tmp(uri, rsc, rm, False)
 
 	def _make_tmp(self, uri=None, rsc=None, rm=False, can_cache=True):
 		if self.from_cache and can_cache:
