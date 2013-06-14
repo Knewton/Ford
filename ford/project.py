@@ -987,6 +987,7 @@ class Project(object):
 
 	def _missing_reqs(self, reqs, pending_lib, pending_resource):
 		missing = {}
+		order = []
 
 		for lib in reqs:
 			req_resources = reqs[lib]
@@ -1009,10 +1010,11 @@ class Project(object):
 						held[resource][pending_lib] = []
 					held[resource][pending_lib].append(pending_resource)
 					if not lib in missing:
+						order.append(lib)
 						missing[lib] = []
 					missing[lib].append(resource)
 
-		return missing
+		return (missing, order)
 
 	def _remove_hold(self, held, lib, resource):
 		for library in held:
@@ -1069,14 +1071,15 @@ class Project(object):
 
 	def _track_resource(self, lib, resource, details):
 		if "reqs" in details:
-			missing = self._missing_reqs(details["reqs"], lib, resource)
+			missing, order = self._missing_reqs(details["reqs"], lib, resource)
 		else:
-			missing = {}
+			missing, order = {}, []
 
 		return {
 			"included": False,
 			"loading": False,
-			"requires": missing
+			"requires": missing,
+			"order": order
 		}
 
 	def _get(self, lib, resource, protocol, uri, ftype, fp=None, img=None,
@@ -1424,7 +1427,7 @@ class Project(object):
 						break;
 
 			if has_requirements:
-				self._load_resources(status["requires"])
+				self._load_resources(status["requires"], status["order"])
 			elif not status["loading"]:
 				status["loading"] = True
 				self._include(lib, resource, details["comp"])
@@ -1450,21 +1453,27 @@ class Project(object):
 				r = lib
 			self._include_library_resource(lib, r)
 
-	def _load_resources(self, includes, proceed_if_empty=False):
+	def _load_resources(self, includes, order=None, proceed_if_empty=False):
 		has_resources = False
 
 		includes = expand_libs(includes, self)
 
-		for lib in includes:
-			has_resources = True
-			self._include_library_resources(lib, includes[lib])
+		if order is not None:
+			for lib in order:
+				has_resources = True
+				self._include_library_resources(lib, includes[lib])
+		else:
+			for lib in includes:
+				has_resources = True
+				self._include_library_resources(lib, includes[lib])
 
 		if not has_resources and proceed_if_empty:
 			self._load_application_resources()
 
 	def _handle_project_dependencies(self):
 		if "includes" in self.manifest:
-			self._load_resources(self.manifest["includes"], self.build_project)
+			self._load_resources(self.manifest["includes"], None,
+					self.build_project)
 		if self.pending_resources == 0:
 			self._load_application_resources()
 

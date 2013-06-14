@@ -912,7 +912,8 @@
 	function missingRequirements(requirements, pendingLib, pendingResource) {
 		var missing = {
 				length: 0,
-				resources: {}
+				resources: {},
+				order: []
 			},
 			lib,
 			requiredResources,
@@ -942,6 +943,7 @@
 						resource = requiredResources[rIndex];
 						if (!hasIncludedLibraryResource(lib, resource)) {
 							if (missing.resources[lib] === undefined) {
+								missing.order.push(lib);
 								missing.resources[lib] = [];
 							}
 
@@ -1117,7 +1119,8 @@
 
 		if (!libraryResource.included) {
 			if (libraryResource.requires.length > 0) {
-				loadResources(libraryResource.requires.resources);
+				loadResources(libraryResource.requires.resources,
+						libraryResource.requires.order);
 			} else {
 				if (!libraryResource.loading) {
 					libraryResource.loading = true;
@@ -1175,18 +1178,30 @@
 	/**
 	 * Wraps {@code includeLibraryResources()}.
 	 * @param {Object<string, Array<string>} libraries Resources to include,
+	 * @param {Array<string>} order The order to use the libraries in.
 	 * @param {boolean} proceedIfEmpty Continue bootstrapping if empty.
 	 */
-	function loadResources(libraries, proceedIfEmpty) {
+	function loadResources(libraries, order, proceedIfEmpty) {
 		var lib,
+			index,
 			hasAnyResources = false;
 
 		libraries = expandLibs(libraries);
 
-		for (lib in libraries) {
-			if (libraries.hasOwnProperty(lib)) {
-				hasAnyResources = true;
-				includeLibraryResources(lib, libraries[lib]);
+		if (order !== undefined) {
+			for (index in order) {
+				lib = order[index];
+				if (libraries.hasOwnProperty(lib)) {
+					hasAnyResources = true;
+					includeLibraryResources(lib, libraries[lib]);
+				}
+			}
+		} else {
+			for (lib in libraries) {
+				if (libraries.hasOwnProperty(lib)) {
+					hasAnyResources = true;
+					includeLibraryResources(lib, libraries[lib]);
+				}
 			}
 		}
 
@@ -1207,7 +1222,7 @@
 	 */
 	function loadApplication(manifest) {
 		applicationManifest = manifest;
-		loadResources(manifest.includes, true);
+		loadResources(manifest.includes, undefined, true);
 	}
 
 	//------------------------------
