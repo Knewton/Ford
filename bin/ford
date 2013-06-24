@@ -122,9 +122,9 @@ def main():
 		exit(0)
 	elif action == "latest":
 		selfupdate()
-		upgrade(opts.force)
+		upgrade(True)
 		if not opts.skip:
-			cdnimport(opts.force)
+			cdnimport(True)
 		exit(0)
 	elif action == "mkcert":
 		makecert()

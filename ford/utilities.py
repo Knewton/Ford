@@ -26,16 +26,18 @@ def write_file(file_path, content, mode="w"):
 	with open(file_path, mode) as stream:
 		stream.write(content)
 
-def call(cmd, failexit=False, output=False, failout=False, tab=False):
+def call(cmd, failexit=False, output=False, fout=False, tab=False, sout=False):
 	if type(cmd) == ListType:
 		cmd = " ".join(cmd)
 	process = Popen(cmd, stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=True)
 	out = process.communicate()[0]
 	if output:
 		print out
+	if sout:
+		return out
 	code = process.returncode
 	if code != 0:
-		if failout:
+		if fout:
 			print out
 		if failexit:
 			exit(code)

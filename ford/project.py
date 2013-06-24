@@ -634,7 +634,12 @@ class Project(object):
 		elif ftype == "css":
 			cmd += ["--force-image-embed", "--embed-images", "data_uri"]
 		cmd += ["'{0}'".format(src_file)]
-		if call(cmd, output=True) == 0:
+		resp = call(cmd, sout=True)
+
+		# Juicer doesn't fail on failure; test for such cases
+		is_error = "[ERROR]" in resp
+
+		if not is_error:
 			if self._manifest_flag("rawsrc") or self.rawsrc:
 				pe("warning", "compiling", src_file)
 				copyfile(out_file, src_file)
@@ -644,6 +649,7 @@ class Project(object):
 				remove(src_file)
 		else:
 			pe("exception", "compiling", src_file)
+			print resp
 			exit(1)
 
 	def _expand_component_group(self, component):
