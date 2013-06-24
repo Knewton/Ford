@@ -27,13 +27,14 @@ from sys import exit
 from time import time
 from urllib2 import urlopen, HTTPError
 from subprocess import call as subcall
-from coffeescript import compile as coffeecc
 
 #------------------------------
 # Third-party
 #------------------------------
 
 from BeautifulSoup import BeautifulSoup, Tag
+from coffeescript import compile as coffeecc
+from jinja2 import Template
 
 #------------------------------
 # Project
@@ -97,6 +98,13 @@ EXT_TEMPLATE_DIR = "Ford-Templates-master"
 CDNJS_URL = "http://cdnjs.cloudflare.com/ajax/libs/{0}/{1}/{2}"
 CDNJS_CACHE = join(USER_DIR, "cdnjs.com.packages.json")
 CDNJS_REPO = "http://cdnjs.com/packages.json"
+
+#------------------------------
+# Templating
+#------------------------------
+
+# An awesome Javascript implementaiton of Jinja
+JINJA_JS = "https://raw.github.com/sstur/jinja-js/master/lib/jinja.js"
 
 #------------------------------
 # Cert file
@@ -518,6 +526,10 @@ def get_external(force=False):
 	pe("removed", templates)
 	rmtree(templates)
 
+	# Grab the jinja script and throw it in our script directory
+	jinja_path = join(SCRIPT_DIR, "jinja.js")
+	wget(JINJA_JS, "js", jinja_path)
+
 	return ret
 
 def upgrade(force=False):
@@ -671,7 +683,8 @@ class Project(object):
 			pe("exception", "missing_property", resource, html[lib].keys())
 			exit(1)
 
-		element = BeautifulSoup(html[lib][resource])
+		t = Template(html[lib][resource])
+		element = BeautifulSoup(t.render())
 		merge_classes(component, element)
 		merge_sections(component, element)
 		replace_element(component, element)
@@ -833,7 +846,10 @@ class Project(object):
 			if not exists(src):
 				pe("exception", "missing_file", src)
 				exit(1)
-			index_html = BeautifulSoup(read_file(src))
+
+			# Treat our HTML as a Jinja2 template
+			index_html = Template(read_file(src))
+			index_html = BeautifulSoup(index_html.render())
 
 			# process inline coffeescript tags
 			cscripts = index_html.findAll(type="text/coffeescript")

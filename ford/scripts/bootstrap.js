@@ -715,7 +715,7 @@
 
 		content = htmlFragments[lib][resource];
 		factory = document.createElement("div");
-		factory.innerHTML = content;
+		factory.innerHTML = jinja.render(content);
 		element = factory.firstChild;
 
 		mergeClasses(component, element);
@@ -793,6 +793,10 @@
 			s.innerHTML = css.join("");
 			head.insertBefore(s, head.lastChild);
 		}
+
+		// Handle any inline HTML templating
+		document.body.innerHTML = jinja.render(document.body.innerHTML);
+
 		resolveComponents();
 		window.__bootstrapped__ = true;
 		if (pause) {
@@ -1253,7 +1257,10 @@
 	} else if (root === null) {
 		alert('The tag including the bootstrap must have id="bootstrap"');
 	} else {
-		get("manifest.json", loadApplication, "json");
+		// Load the Jinja templating engine, then start the bootstrapping
+		get("jinja.js", function () {
+			get("manifest.json", loadApplication, "json");
+		}, "js");
 	}
 
 }());
