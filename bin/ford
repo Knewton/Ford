@@ -87,6 +87,11 @@ def optparse():
 						default=False, help="Update the Ford cache.")
 	return parser
 
+def interrupted(action, directory, proj=None):
+	# Attempt to exit cleanly on a termination. This script is only called
+	# when the user interrupts a running script with ctrl+c
+	exit(0)
+
 def main():
 	opts, args = optparse().parse_args()
 
@@ -115,68 +120,70 @@ def main():
 			print "Ford cannot be run as root!"
 			exit(1)
 
-	directory = abspath(directory)
-	if action == "self-update":
-		os.getuid()
-		selfupdate()
-		exit(0)
-	elif action == "latest":
-		selfupdate()
-		upgrade(True)
-		if not opts.skip:
-			cdnimport(True)
-		exit(0)
-	elif action == "mkcert":
-		makecert()
-		exit(0)
+	proj = None
+	try:
+		directory = abspath(directory)
+		if action == "selfup":
+			selfupdate()
+			exit(0)
+		elif action == "latest":
+			selfupdate()
+			upgrade(True)
+			if not opts.skip:
+				cdnimport(True)
+			exit(0)
+		elif action == "mkcert":
+			makecert()
+			exit(0)
 
-	if action == "help":
-		optparse().print_help()
-		exit(0)
-	elif action == "upgrade":
-		upgrade(opts.force)
-		if not opts.skip:
+		if action == "help":
+			optparse().print_help()
+			exit(0)
+		elif action == "upgrade":
+			upgrade(opts.force)
+			if not opts.skip:
+				cdnimport(opts.force)
+			exit(0)
+		elif action == "import":
 			cdnimport(opts.force)
-		exit(0)
-	elif action == "import":
-		cdnimport(opts.force)
-		exit(0)
-	elif action == "serve":
-		if opts.port == "80":
-			print "You are attempting to run a server on port 80."
+			exit(0)
+		elif action == "serve":
+			if opts.port == "80":
+				print "You are attempting to run a server on port 80."
+				print "This requires sudo permissions; please rerun with sudo!"
+				exit(1)
+			subcall(["python", "-m", "SimpleHTTPServer", opts.port])
+			exit(0)
+		elif action == "ssl":
+			print "You are attempting to run a server on port 443."
 			print "This requires sudo permissions; please rerun with sudo!"
 			exit(1)
-		subcall(["python", "-m", "SimpleHTTPServer", opts.port])
-		exit(0)
-	elif action == "ssl":
-		print "You are attempting to run a server on port 443."
-		print "This requires sudo permissions; please rerun with sudo!"
-		exit(1)
 
-	if not action in SUPPORTED_ACTIONS:
-		print "action must be '{0}'; '{1}' is not supported".format(
-			", ".join(SUPPORTED_ACTIONS), action)
-		exit(0)
+		if not action in SUPPORTED_ACTIONS:
+			print "action must be '{0}'; '{1}' is not supported".format(
+				", ".join(SUPPORTED_ACTIONS), action)
+			exit(0)
 
-	p = Project(directory, opts.build)
-	if not opts.skip or action == "init":
-		if not p.init(opts.template, opts.force, action == "init"):
+		proj = Project(directory, opts.build)
+		if not proj.init(opts.template, opts.force, action == "init"):
 			exit(1)
 
-	if action == "init":
+		if action == "init":
+			exit(0)
+
+		# Set the project caching options
+		proj.from_cache = not opts.fresh
+		proj.update_cache = opts.bust
+
+		if action == "update":
+			proj.update()
+		else:
+			proj.build(abspath(opts.output),
+					opts.skip, opts.embed, opts.rawsrc, opts.clean)
+
 		exit(0)
-
-	# Set the project caching options
-	p.from_cache = not opts.fresh
-	p.update_cache = opts.bust
-
-	if action == "update":
-		p.update()
-	else:
-		p.build(abspath(opts.output),
-				opts.skip, opts.embed, opts.rawsrc, opts.clean)
-
-	exit(0)
+	except KeyboardInterrupt:
+		interrupted(action, directory, proj)
 
 if __name__ == "__main__":
 	main()

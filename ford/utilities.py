@@ -8,6 +8,7 @@ from types import ListType
 from shutil import copyfile
 from pprint import pprint, pformat
 from termcolor import colored, cprint
+from hashlib import sha256
 
 def mkdirp(path):
 	try:
@@ -21,6 +22,9 @@ def read_file(file_path):
 	with open(file_path, 'r') as f:
 		data = f.read()
 	return data
+
+def hash_file(file_path):
+	return sha256(read_file(file_path)).digest()
 
 def write_file(file_path, content, mode="w"):
 	with open(file_path, mode) as stream:
@@ -42,6 +46,21 @@ def call(cmd, failexit=False, output=False, fout=False, tab=False, sout=False):
 		if failexit:
 			exit(code)
 	return code
+
+def prompt(msg=None, default=True):
+	if msg is None:
+		msg = "Do you want to continue?"
+	print msg,
+	if default:
+		print " [Y/n]:"
+	else:
+		print " [y/N]:"
+	s = raw_input()
+
+	if s in [" ", ""]:
+		return default
+
+	return s.lower() in ["y", "yes", " ", ""]
 
 def fix_path(p):
 	return abspath(expanduser(p))
@@ -75,6 +94,42 @@ def copy_missing_files(src, dest, force, underscore=False):
 			had_file = True
 	return had_file
 
+def print_overlap_files(src, dest, only=True, us=False, p=None, c=None):
+	global has_printed_overlap
+	if not isdir(dest):
+		mkdir(dest)
+
+	had_file = False
+	has_printed = False
+	for f in listdir(src):
+		fp = join(src, f)
+
+		# Replace underscore with dot
+		if us and f[0] == "_":
+			dest_fp = join(dest, ".{0}".format(f[1:]))
+		else:
+			dest_fp = join(dest, f)
+
+		if isdir(fp):
+			if print_overlap_files(fp, join(dest, f), only, us, p, c):
+				had_file = True
+		else:
+			if exists(dest_fp):
+				tpl = " EXIST "
+				# Only show changed files
+				if only:
+					if hash_file(fp) == hash_file(dest_fp):
+						continue
+					tpl = "CHANGED"
+				if not has_printed_overlap:
+					has_printed_overlap = True
+					if p is not None:
+						printr(p, c)
+				printr("[{0}] {1:<80}".format(tpl, shrt(dest_fp)), "red")
+				had_file = True
+
+	return had_file
+
 def merge_directories(src, dest, dirs=None, force=False, underscore=False):
 	src = fix_path(src)
 	dest = fix_path(dest)
@@ -93,6 +148,30 @@ def merge_directories(src, dest, dirs=None, force=False, underscore=False):
 		if copy_missing_files(join(src, d), join(dest, d), force, underscore):
 			made_change = True
 	return made_change
+
+has_printed_overlap = False
+def print_directories(src, dest, ds=None, only=True, us=False, p=None, c=None):
+	global has_printed_overlap
+	src = fix_path(src)
+	dest = fix_path(dest)
+	had_file = False
+
+	has_printed_overlap = False
+
+	if not isdir(src):
+		return False
+
+	if not isdir(dest):
+		mkdir(dest)
+
+	if ds is None:
+		return print_overlap_files(src, dest, only, us, p, c)
+
+	for d in ds:
+		if print_overlap_files(join(src, d), join(dest, d), only, us, p, c):
+			had_file = True
+
+	return had_file
 
 def create_archive_basedir(file_path, dry=False):
 	"""Given an archive, creates a sibling directory for clean checkout"""

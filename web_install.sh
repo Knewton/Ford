@@ -356,14 +356,18 @@ ConfirmInstall() {
 
 	DisplaySoftwareInformation
 
+	read -r -p "Are you sure? [Y/n]" response
+	 response=${response,,} # tolower
+
 	printf "\nContinue with $wi_name $_wi_action? [Y/n]: "
 	read user_confirmation < /dev/tty
+	response=${user_confirmation,,} # tolower
 
-	if [ "$user_confirmation" = "n" ]; then
-		return 1
+	if [[ $response =~ ^(yes|y| ) ]]; then
+		return 0
 	fi
 
-	return 0
+	return 1
 }
 
 #------------------------------

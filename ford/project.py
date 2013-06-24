@@ -41,7 +41,7 @@ from jinja2 import Template
 #------------------------------
 
 from utilities import (mkdirp, read_file, write_file, call, merge_directories,
-	fix_path, unpackage, loc, printr, set_dir)
+	fix_path, unpackage, loc, printr, set_dir, prompt, print_directories)
 from utilities import print_event as pe
 
 #------------------------------
@@ -1516,14 +1516,42 @@ class Project(object):
 
 	def init(self, template=None, force=False, explicit=False):
 		cur_template = join(self.project_dir, ".template")
+		had_template = False
+		copy_template = False
+		template_change = False
+
 		if template is None:
 			if isfile(cur_template):
 				template = read_file(cur_template)
+				copy_template = force
 			else:
 				template = DEFAULT_TEMPLATE
+				copy_template = True
 				if not explicit:
 					pe("exception", "not_project", self.project_dir)
 					return False
+		elif isfile(cur_template):
+			cur_template = read_file(cur_template)
+			if template == cur_template:
+				had_template = True
+				copy_template = force
+			else:
+				tpl_dir = join(USER_DIR, "templates", template)
+				if not exists(tpl_dir):
+					pe("exception", "missing_template", template)
+					exit(1)
+
+				printr("You are attempting to change this project's template.",
+						"yellow")
+				print "Current Template: ", cur_template
+				print "Updated Template: ", template
+				if not prompt(default=False):
+					exit(0)
+				else:
+					printr("[NEW TPL] {0:<80}".format(template), "magenta")
+					copy_template = True
+					template_change = True
+					force = True
 
 		pe("action", "init", self.project_dir)
 		has_any = False
@@ -1531,8 +1559,14 @@ class Project(object):
 		if not exists(tpl_dir):
 			pe("exception", "missing_template", template)
 			exit(1)
-		if merge_directories(tpl_dir, self.project_dir, None, force, True):
-			has_any = True
+
+		if had_template and force:
+			if print_directories(tpl_dir, self.project_dir, None, True, False,
+					"[WARNING] You are about to revert the following files:",
+					"yellow"):
+				if not prompt(default=False):
+					exit(0)
+
 		if merge_directories(SCRIPT_DIR, self.project_dir, None, True, True):
 			has_any = True
 
@@ -1542,13 +1576,22 @@ class Project(object):
 		pe("overwrite", coffeeSrc, coffeeDest)
 		copyfile(coffeeSrc, coffeeDest)
 
+		if copy_template:
+			if merge_directories(tpl_dir, self.project_dir, None, force, True):
+				has_any = True
+			write_file(join(self.project_dir, ".template"), template)
+
 		for d in PROJECT_DIRS:
 			path = join(self.project_dir, d)
 			mkdirp(path)
+
 		if not has_any:
 			pe("notice", "init", "nothing")
-		else:
-			write_file(join(self.project_dir, ".template"), template)
+
+		if template_change and explicit:
+			printr("[NEW TPL] Performing template swap update.", "magenta")
+			self.update()
+
 		return True
 
 	#------------------------------
