@@ -407,7 +407,12 @@ def cdnimport(force):
 	upgraded = False
 
 	for p in packages["packages"]:
+		# Skip files we can't import
 		if not "name" in p:
+			continue
+		if not "filename" in p:
+			continue
+		if not "version" in p:
 			continue
 
 		resource_path = join(USER_DIR, "manifests",
@@ -617,7 +622,7 @@ class Project(object):
 		elif ftype == "css":
 			cmd += ["--force-image-embed", "--embed-images", "data_uri"]
 		cmd += ["'{0}'".format(src_file)]
-		if call(cmd) == 0:
+		if call(cmd, output=True) == 0:
 			if self._manifest_flag("rawsrc") or self.rawsrc:
 				pe("warning", "compiling", src_file)
 				copyfile(out_file, src_file)
