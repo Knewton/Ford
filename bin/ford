@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 from optparse import OptionParser
-from os.path import abspath, isdir
-from os import chdir, getuid
-from sys import exit
+from os.path import abspath, isdir, basename
+from os import chdir, getuid, getlogin, getcwd
+from sys import exit, argv
 from ford.utilities import mkdirp
 from ford import utilities
 from subprocess import call as subcall
 
 from ford.project import Project, upgrade, cdnimport, selfupdate, makecert
+from ford.project import JSONError, UpdateError
 
 SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup",
 	"init", "update", "build"]
@@ -85,17 +86,26 @@ def optparse():
 						default=False, help="Skip using the Ford cache.")
 	parser.add_option("-u", "--update-cache", dest="bust", action="store_true",
 						default=False, help="Update the Ford cache.")
+	parser.add_option("-i", "--ignore-lock", dest="smash", action="store_true",
+						default=False,
+						help="Remove existing project lock. (Not recommended)")
 	return parser
+
+def cleanup(code, proj):
+	proj.unlock()
+	exit(code)
 
 def interrupted(action, directory, proj=None):
 	# Attempt to exit cleanly on a termination. This script is only called
 	# when the user interrupts a running script with ctrl+c
-	exit(0)
+	cleanup(0, proj)
 
 def main():
 	opts, args = optparse().parse_args()
-
 	action, directory = "help", "."
+
+	argv[0] = basename(argv[0])
+	cmd = " ".join(argv)
 
 	if len(args) >= 2:
 		action = args[0]
@@ -165,11 +175,25 @@ def main():
 			exit(0)
 
 		proj = Project(directory, opts.build)
-		if not proj.init(opts.template, opts.force, action == "init"):
+
+		did_lock, lock_text = proj.lock(getlogin(), getcwd(), cmd)
+		if not did_lock and opts.smash:
+			proj.unlock()
+			did_lock, lock_text = proj.lock(getlogin(), getcwd(), cmd)
+
+		if not did_lock:
+			print "This project was locked!\n\n\t{0}".format(lock_text)
+			print "\nEither a ford task is running or exited uncleanly."
+			print "If this task is not currently running, remove the file:"
+			utilities.printr("\n\t{0}".format(proj.lock_file), "red")
+			print "\nAnd then run your command again."
 			exit(1)
 
+		if not proj.init(opts.template, opts.force, action == "init"):
+			cleanup(1, proj)
+
 		if action == "init":
-			exit(0)
+			cleanup(1, proj)
 
 		# Set the project caching options
 		proj.from_cache = not opts.fresh
@@ -181,7 +205,9 @@ def main():
 			proj.build(abspath(opts.output),
 					opts.skip, opts.embed, opts.rawsrc, opts.clean)
 
-		exit(0)
+		cleanup(0, proj)
+	except (JSONError, UpdateError):
+		cleanup(1, proj)
 	except KeyboardInterrupt:
 		interrupted(action, directory, proj)
 

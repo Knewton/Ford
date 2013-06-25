@@ -27,6 +27,7 @@ from sys import exit
 from time import time
 from urllib2 import urlopen, HTTPError
 from subprocess import call as subcall
+from datetime import datetime
 
 #------------------------------
 # Third-party
@@ -153,6 +154,9 @@ VALID_MIME = {
 # Excptions
 #------------------------------
 
+class JSONError(Exception):
+	pass
+
 class UpdateError(Exception):
 	pass
 
@@ -270,13 +274,13 @@ def get_json(fp, silent=False):
 	if not exists(fp):
 		if not silent:
 			pe("exception", "missing_file", fp)
-		exit(1)
+		raise JSONError()
 	try:
 		return loads(read_file(fp))
 	except ValueError:
 		if not silent:
 			pe("exception", "invalid_file", "json", fp)
-		exit(1)
+		raise JSONError()
 
 def get_manifest(lib, silent=False):
 	return get_json("{0}/manifest.json".format(lib), silent)
@@ -325,7 +329,6 @@ def wget(url, ftype, dest):
 		write_file(dest, resp.read())
 	except HTTPError as e:
 		raise UpdateError(loc["exception"]["http"].format(str(e), url))
-		exit(1)
 
 # Author: Cimarron Taylor
 # Date: July 6, 2003
@@ -567,6 +570,7 @@ class Project(object):
 		# Define properties
 		self.project_dir = realpath(project_dir)
 		self.project_manifest = realpath(project_manifest)
+		self.lock_file = join(self.project_dir, ".ford.lock")
 		self.output_dir = None
 		self.libraries = {}
 		self.included = {}
@@ -596,6 +600,22 @@ class Project(object):
 	#------------------------------
 	# Builder utilities
 	#------------------------------
+
+	def lock(self, login, path, cmd):
+		if isfile(self.lock_file):
+			return (False, read_file(self.lock_file))
+		else:
+			time = datetime.now().isoformat()
+			message = "[{3}] {0} {1} $ {2}".format(login, path, cmd, time)
+			write_file(self.lock_file, message)
+			return (True, message)
+
+	def unlock(self):
+		remove(self.lock_file)
+
+	def exit(self, code):
+		self.unlock()
+		exit(code)
 
 	def _prepare(self):
 		global lib_groups
@@ -1193,7 +1213,6 @@ class Project(object):
 			if not isfile(uri):
 				raise UpdateError(err +
 						loc["exception"]["missing_file"].format(uri))
-				exit(1)
 			mkdirp(dirname(dest))
 			try:
 				if link:
@@ -1305,7 +1324,7 @@ class Project(object):
 
 		if not "comp" in details:
 			pe("exception", "missing_property", "comp", details)
-			exit(1)
+			self.exit(1)
 
 		comp = details["comp"]
 
@@ -1418,7 +1437,7 @@ class Project(object):
 					self._update_resource(lib, resource, details, base)
 		except UpdateError as e:
 			printr(e, "red")
-			exit(1)
+			self.exit(1)
 
 		lib_manifest = join(self.project_dir, lib_path(lib), "manifest.json")
 		cache_manifest = join(CACHE_DIR, lib, "manifest.json")
@@ -1435,7 +1454,7 @@ class Project(object):
 
 		if not resource in manifest:
 			pe("exception", "missing_resource", resource, lib)
-			exit(1)
+			self.exit(1)
 
 		details = manifest[resource]
 
@@ -1539,14 +1558,14 @@ class Project(object):
 				tpl_dir = join(USER_DIR, "templates", template)
 				if not exists(tpl_dir):
 					pe("exception", "missing_template", template)
-					exit(1)
+					self.exit(1)
 
 				printr("You are attempting to change this project's template.",
 						"yellow")
 				print "Current Template: ", cur_template
 				print "Updated Template: ", template
 				if not prompt(default=False):
-					exit(0)
+					self.exit(0)
 				else:
 					printr("[NEW TPL] {0:<80}".format(template), "magenta")
 					copy_template = True
@@ -1558,14 +1577,14 @@ class Project(object):
 		tpl_dir = join(USER_DIR, "templates", template)
 		if not exists(tpl_dir):
 			pe("exception", "missing_template", template)
-			exit(1)
+			self.exit(1)
 
 		if had_template and force:
 			if print_directories(tpl_dir, self.project_dir, None, True, False,
 					"[WARNING] You are about to revert the following files:",
 					"yellow"):
 				if not prompt(default=False):
-					exit(0)
+					self.exit(0)
 
 		if merge_directories(SCRIPT_DIR, self.project_dir, None, True, True):
 			has_any = True
