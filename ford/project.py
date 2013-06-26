@@ -18,9 +18,10 @@
 #------------------------------
 
 from json import dumps, loads
-from os import makedirs, remove, symlink, getcwd, listdir, chdir
+from os import (makedirs, remove, symlink, getcwd, listdir, chdir, kill,
+	unlink, readlink)
 from os.path import (realpath, exists, isfile, isdir, join, expanduser,
-	dirname, basename, splitext, split, normpath)
+	dirname, basename, splitext, split, normpath, islink)
 from re import findall, sub
 from shutil import copyfile, copytree, rmtree
 from sys import exit
@@ -42,8 +43,10 @@ from jinja2 import Template
 #------------------------------
 
 from utilities import (mkdirp, read_file, write_file, call, merge_directories,
-	fix_path, unpackage, loc, printr, set_dir, prompt, print_directories)
+	fix_path, unpackage, loc, printr, set_dir, prompt, print_directories, shrt)
 from utilities import print_event as pe
+from daemon import Daemon
+from server import simple, secure, threaded
 
 #------------------------------
 #
@@ -72,7 +75,12 @@ __status__ = "Development"
 BUILD_TARGET = "{0}/build_targets/{1}.json"
 USER_DIR = expanduser("~/.ford")
 SCRIPT_DIR = join(USER_DIR, "scripts")
+LOCK_DIR = join(USER_DIR, "locks")
+HOSTING_DIR = join(USER_DIR, "hosting")
 CACHE_DIR = join(USER_DIR, "cache")
+LOG_DIR = join(USER_DIR, "log")
+CENTRAL_SERVER_DIR = join(USER_DIR, "server")
+SETTINGS_FILE = join(USER_DIR, "settings.json")
 
 #------------------------------
 # Web Installer
@@ -108,7 +116,7 @@ CDNJS_REPO = "http://cdnjs.com/packages.json"
 JINJA_JS = "https://raw.github.com/sstur/jinja-js/master/lib/jinja.js"
 
 #------------------------------
-# Cert file
+# Hosting
 #------------------------------
 
 CERT_FILE = join(USER_DIR, "localhost.pem")
@@ -177,6 +185,40 @@ for t in CUSTOM_TAGS:
 #------------------------------
 
 #------------------------------
+# Settings
+#------------------------------
+
+DEFAULT_SETTINGS = {
+	"hosted": False
+}
+settings = None
+
+def get_settings():
+	global settings
+
+	if isfile(SETTINGS_FILE):
+		try:
+			settings = get_json(SETTINGS_FILE, True)
+		except:
+			settings = DEFAULT_SETTINGS
+			write_file(SETTINGS_FILE, dumps(DEFAULT_SETTINGS))
+	else:
+		write_file(SETTINGS_FILE, dumps(settings))
+
+def setting(key, val=None):
+	global settings
+	get_settings()
+
+	if val is None:
+		if key in settings:
+			return settings[key]
+		else:
+			return None
+	else:
+		settings[key] = val
+		write_file(SETTINGS_FILE, dumps(settings))
+
+#------------------------------
 # Cache
 #------------------------------
 
@@ -202,6 +244,25 @@ def in_cache(lib, resource, proj, full_lib=False):
 #------------------------------
 # Generic
 #------------------------------
+
+def soup_txt(txt, path):
+	index_html = None
+	try:
+		index_html = Template(txt)
+		index_html = BeautifulSoup(index_html.render())
+	except UnicodeDecodeError:
+		cmd = ["grep", "--color=auto", "-P", "-n", "-3", "[\x80-\xFF]"]
+		p = shrt(path)
+		printr("[ ERROR ] Unicode error detected in file {0}".format(p), "red")
+		cmd.append(path)
+		print " ".join(cmd)
+		subcall(cmd)
+		exit(1)
+
+	return index_html
+
+def soup_file(src):
+	return soup_txt(read_file(src), src)
 
 def expand_namespace(shorthand, obj):
 	for i in shorthand[1]:
@@ -382,7 +443,7 @@ def selfupdate():
 		exit(1)
 
 #------------------------------
-# Cert for SSL
+# Hosting
 #------------------------------
 
 def makecert():
@@ -401,6 +462,243 @@ def makecert():
 	if not isfile(CERT_FILE):
 		subcall(["openssl", "req", "-new", "-x509", "-keyout", CERT_FILE,
 			"-out", CERT_FILE, "-days", "365", "-nodes"])
+
+def proc_log_path(pid, err=False):
+	fname = basename(pid)
+	if fname[0] == ".":
+		fname = fname[1:]
+	out_path = join(LOG_DIR, fname)
+	if err:
+		return out_path + ".error.log"
+	else:
+		return out_path + ".access.log"
+
+class ServerDaemon(Daemon):
+	def __init__(self, pid, port, path, sin=None, sout=None, serr=None):
+		if sin is None:
+			sin = "/dev/null"
+		if sout is None:
+			sout = proc_log_path(pid)
+		if serr is None:
+			serr = proc_log_path(pid, True)
+
+		# @TODO: Rotate logs?
+
+		super(ServerDaemon, self).__init__(pid, sin, sout, serr)
+		self.path = path
+		self.port = port
+
+	def run(self):
+		chdir(self.path)
+		simple(self.port)
+
+class SecureDaemon(ServerDaemon):
+	def run(self):
+		chdir(self.path)
+		secure()
+
+class ComboDaemon(ServerDaemon):
+	def run(self):
+		chdir(self.path)
+		threaded(self.port, self.path)
+		secure()
+
+def hosting_cmd(port, is_daemon=False, proj_dir=None, pid=None):
+	if proj_dir is None:
+		proj_dir = CENTRAL_SERVER_DIR
+		pid = ".ford.central-server"
+	elif pid is None:
+		pid = basename(proj_dir)
+
+	if pid is None:
+		pid = ".ford"
+
+	pid = join(HOSTING_DIR, "{0}.pid".format(pid))
+	cmd = None
+
+	last_dir = getcwd()
+	chdir(proj_dir)
+
+	if port == 443:
+		require_cert()
+		if is_daemon:
+			cmd = SecureDaemon(pid, 443, proj_dir)
+		else:
+			cmd = ["ssl_server_ford"]
+	else:
+		if is_daemon:
+			cmd = ServerDaemon(pid, port, proj_dir)
+		else:
+			cmd = ["server_ford", str(port)]
+	return proj_dir, cmd
+
+def hosted_projects(silent=False):
+	out = {}
+	pwd = getcwd()
+	chdir(CENTRAL_SERVER_DIR)
+	projs = listdir('.')
+	for proj in projs:
+		path = realpath(readlink(proj))
+		if not path in out:
+			out[path] = []
+		out[path].append(proj)
+		if not silent:
+			printr("[PROJECT] {0:<80} {1:80}".format(proj, path), "yellow")
+	chdir(pwd)
+	return out
+
+def srv_status(silent=False):
+	pidfile = join(HOSTING_DIR, ".ford.central-server.pid")
+	is_running = False
+	color = "red"
+	txt = "Server is "
+	host_txt = None
+
+	if not silent:
+		printr("Ford server status", "white", ["bold", "underline"])
+	if setting("hosted"):
+		port = daemon_port()
+		if setting("multihost"):
+			host_txt = "SSL (443), HTTP ({0})".format(port)
+			txt = "Servers are "
+		elif port == 443:
+			host_txt = "SSL (443)"
+		else:
+			host_txt = "HTTP ({0})".format(port)
+
+		if isfile(pidfile):
+			pid = read_file(pidfile)
+			try:
+				kill(int(pid), 0)
+				is_running = True
+			except:
+				pass
+
+		if is_running:
+			color = "green"
+			txt += "running"
+		else:
+			txt += "NOT running"
+
+		if not silent:
+			printr("[SERVERS] {0}".format(host_txt), "cyan")
+			printr("[WEBHOST] {0}".format(txt), color)
+
+			print ""
+			printr("Ford server logs", "white", ["bold", "underline"])
+			printr("[  LOG  ] {0}".format(proc_log_path(pidfile)), "white")
+			printr("[ ERROR ] {0}".format(proc_log_path(pidfile, True)),
+					"magenta")
+	elif not silent:
+		printr("[SERVERS] Offline".format(txt), "white")
+
+	if not silent:
+		print ""
+		printr("Ford hosted projects", "white", ["bold", "underline"])
+	hosted_projects(silent)
+
+	return is_running
+
+def daemon_port(proj_dir=None):
+	if proj_dir is None:
+		port_file = join(HOSTING_DIR, ".ford.central-server.port")
+	else:
+		port_file = join(HOSTING_DIR, "{0}.port".format(basename(proj_dir)))
+	if isfile(port_file):
+		return int(read_file(port_file))
+	else:
+		return -1
+
+# Starting the daemon flushes stdout and breaks print
+def host(port, is_daemon=False, proj_dir=None, pid=None):
+	port = int(port)
+
+	if proj_dir is None:
+		port_file = join(HOSTING_DIR, ".ford.central-server.port")
+	else:
+		port_file = join(HOSTING_DIR, "{0}.port".format(basename(proj_dir)))
+	proj_dir, cmd = hosting_cmd(port, is_daemon, proj_dir, pid)
+
+	try:
+		if is_daemon:
+			write_file(port_file, str(port))
+			cmd.restart()
+		elif cmd is not None:
+			subcall(cmd)
+	except KeyboardInterrupt:
+		pass
+
+def require_cert():
+	if not isfile(CERT_FILE):
+		print "You do not have a certificate file for secure hosting!"
+		print "You need to run `ford mkcert' to use secure hosting!"
+		exit(1)
+
+def multihost(port=8080):
+	port = int(port)
+	require_cert()
+	try:
+		port_file = join(HOSTING_DIR, ".ford.central-server.port")
+		proj_dir, x = hosting_cmd(port, True)
+		cmd = ComboDaemon(join(HOSTING_DIR, ".ford.central-server.pid"), port,
+				proj_dir)
+
+		write_file(port_file, str(port))
+		cmd.restart()
+	except KeyboardInterrupt:
+		pass
+
+def stophost(proj_dir=None, pid=None):
+	if proj_dir is None:
+		port_file = join(HOSTING_DIR, ".ford.central-server.port")
+	else:
+		port_file = join(HOSTING_DIR, "{0}.port".format(basename(proj_dir)))
+	proj_dir, cmd = hosting_cmd(None, True, proj_dir, pid)
+
+	cmd.stop()
+
+	if isfile(port_file):
+		port = int(read_file(port_file))
+		remove(port_file)
+		return port
+
+	return -1
+
+def host_project(host_path, src):
+	link_path = join(CENTRAL_SERVER_DIR, host_path)
+	if not exists(link_path):
+		relative_symlink(src, link_path)
+		printr("[HOSTING] Adding {0} to Ford servers.".format(host_path),
+				"green")
+	elif islink(link_path):
+		printr("[HOSTING] {0:<80} File already exists!".format(link_path),
+				"red")
+	else:
+		printr("[CORRUPT] {0:<80} File not a link!".format(link_path), "red")
+
+def unhost_project(host_path, cwd):
+	link_path = join(CENTRAL_SERVER_DIR, host_path)
+	rmsg = "[HOSTING] Removing {0} from Ford servers."
+	if islink(link_path):
+		unlink(link_path)
+		printr(rmsg.format(host_path), "magenta")
+		return True
+	else:
+		projs = hosted_projects(True)
+		if cwd in projs:
+			did_change = False
+			for proj in projs[cwd]:
+				link_path = join(CENTRAL_SERVER_DIR, proj)
+				if islink(link_path):
+					unlink(link_path)
+					printr(rmsg.format(host_path), "magenta")
+					did_change = True
+			if did_change:
+				return True
+
+		printr("[WARNING] {0} is not a hosted project.".format(host_path),
+				"red")
+		return False
 
 #------------------------------
 # CDNJS import
@@ -539,6 +837,13 @@ def upgrade(force=False):
 	pe("action", "upgrade")
 	upgraded = False
 
+	for d in [CENTRAL_SERVER_DIR, LOCK_DIR, HOSTING_DIR, LOG_DIR]:
+		if not isdir(d):
+			mkdirp(d)
+
+	if not isfile(SETTINGS_FILE):
+		write_file(SETTINGS_FILE, dumps(DEFAULT_SETTINGS))
+
 	# Python can only reliably copy one level deep with setup tools, afaict.
 	# Only using it for scripts now.
 	if merge_directories(SRC_DIR, "~/.ford", TARGETS, force):
@@ -569,8 +874,9 @@ class Project(object):
 	def __init__(self, project_dir, project_manifest):
 		# Define properties
 		self.project_dir = realpath(project_dir)
+		self.project_name = basename(self.project_dir)
 		self.project_manifest = realpath(project_manifest)
-		self.lock_file = join(self.project_dir, ".ford.lock")
+		self.lock_file = join(LOCK_DIR, "{0}.lock".format(self.project_name))
 		self.output_dir = None
 		self.libraries = {}
 		self.included = {}
@@ -709,8 +1015,8 @@ class Project(object):
 			pe("exception", "missing_property", resource, html[lib].keys())
 			exit(1)
 
-		t = Template(html[lib][resource])
-		element = BeautifulSoup(t.render())
+		element = soup_txt(html[lib][resource],
+				self.mkpath(lib, resource, "html"))
 		merge_classes(component, element)
 		merge_sections(component, element)
 		replace_element(component, element)
@@ -874,8 +1180,7 @@ class Project(object):
 				exit(1)
 
 			# Treat our HTML as a Jinja2 template
-			index_html = Template(read_file(src))
-			index_html = BeautifulSoup(index_html.render())
+			index_html = soup_file(src)
 
 			# process inline coffeescript tags
 			cscripts = index_html.findAll(type="text/coffeescript")
@@ -1089,9 +1394,15 @@ class Project(object):
 				self._load_resources(held_resources[resource])
 		self.pending_resources -= 1
 
+	def mkpath(self, lib, resource, ftype=None):
+		path = "{0}/{1}".format(lib_path(lib), resource)
+		if ftype is not None:
+			path += "/{0}.{1}".format(resource, ftype)
+		return path
+
 	def _include(self, lib, resource, comp):
 		if self.build_project:
-			path = "{0}/{1}/{1}".format(lib_path(lib), resource)
+			path = "{0}/{1}".format(self.mkpath(lib, resource), resource)
 			for ftype in comp:
 				if ftype == "js":
 					self.content["js"].append("{0}.js".format(path))
@@ -1532,6 +1843,9 @@ class Project(object):
 	#------------------------------
 	# Init
 	#------------------------------
+
+	def has_template(self):
+		return isfile(join(self.project_dir, ".template"))
 
 	def init(self, template=None, force=False, explicit=False):
 		cur_template = join(self.project_dir, ".template")

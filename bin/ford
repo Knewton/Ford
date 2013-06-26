@@ -7,11 +7,40 @@ from ford.utilities import mkdirp
 from ford import utilities
 from subprocess import call as subcall
 
-from ford.project import Project, upgrade, cdnimport, selfupdate, makecert
+from ford.project import (Project, upgrade, cdnimport, selfupdate,
+	makecert, host, multihost, stophost, daemon_port, setting, srv_status,
+	host_project, unhost_project)
 from ford.project import JSONError, UpdateError
+from ford.utilities import printr
+from ford.utilities import print_event as pe
 
-SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup",
-	"init", "update", "build"]
+SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup", "mkcert"
+	"init", "update", "build", "host", "unhost", "status", "start", "stop",
+	"restart", "server", "ssl"]
+
+def fail_server_check():
+	print "You have sudo permissions but don't need them!"
+	print "Please rerun this command WITHOUT sudo!"
+	exit(1)
+
+def fail_sudo_server_check():
+	print "You are attempting to work with a root server."
+	print "This requires permissions; please rerun with sudo!"
+	exit(1)
+
+def secure_port(port):
+	return port >= 0 and port <= 1024
+
+def check_port():
+	if secure_port(daemon_port()):
+		fail_sudo_server_check()
+
+def not_running(invert=False):
+	if invert:
+		printr("[WEBHOST] Server is already running.", "red")
+	else:
+		printr("[WEBHOST] Server is not running.", "red")
+	exit(1)
 
 def optparse():
 	desc="\n".join(["usage: %prog [options] action [directory]",
@@ -33,6 +62,16 @@ def optparse():
 			"             Use --skip to skip import.",
 			"    mkcert:  Generates a self-signed certificate using OpenSSL.",
 			"",
+			"Ford hosting actions:",
+			"    status:  Checks the status of the Ford servers.",
+			"     start:  Starts up both an SSL and unsecured server.",
+			"             Use --port to set the unsecure port (default: 80).",
+			"             Use --skip to skip creating the secure server.",
+			"             Requires a self-signed certificate (ford mkcert)!",
+			"             Requires sudo!",
+			"   restart:  Restarts any running servers.",
+			"      stop:  Stops any running servers.",
+			"",
 			"Ford project actions:",
 			"    init:    Copies project resources from a template.",
 			"             Use --force to overwrite existing resources.",
@@ -52,7 +91,12 @@ def optparse():
 			"             Use --port to specify the port (default: 80).",
 			"             Requires sudo if port 80 is used!",
 			"      ssl:   Runs a secure simple web server.",
+			"             Requires a self-signed certificate (ford mkcert)!",
 			"             Requires sudo!",
+			"     host:   Adds project to the Ford central server.",
+			"             Use --destination to override default hosting name.",
+			"   unhost:   Removes project from the Ford central server.",
+			"             Use --destination to override default hosting name.",
 			"",
 			"Manifets options:",
 			"    embed:   Embeds all files into the index.html to make a one",
@@ -89,6 +133,8 @@ def optparse():
 	parser.add_option("-i", "--ignore-lock", dest="smash", action="store_true",
 						default=False,
 						help="Remove existing project lock. (Not recommended)")
+	parser.add_option("-d", "--destination", dest="destination",
+						help="Used to override default project server names.")
 	return parser
 
 def cleanup(code, proj):
@@ -121,11 +167,53 @@ def main():
 	is_root = getuid() == 0
 	if is_root:
 		if action == "serve":
-			subcall(["python", "-m", "SimpleHTTPServer", opts.port])
+			host(opts.port, False, getcwd())
 			exit(0)
 		elif action == "ssl":
-			subcall(["ssl_server_ford"])
+			host(443, False, getcwd())
 			exit(0)
+		elif action == "start":
+			if srv_status(True):
+				not_running(True)
+
+			if opts.skip and not secure_port(int(opts.port)):
+				fail_server_check()
+
+			setting("hosted", True)
+			print "Starting Ford servers..."
+			if not opts.skip:
+				setting("multihost", True)
+				multihost(opts.port)
+			else:
+				setting("multihost", False)
+				host(opts.port, True)
+			exit(0)
+		elif action == "stop":
+			setting("hosted", False)
+			setting("multihost", False)
+
+			print "Stopping Ford servers..."
+			stophost(None, ".ford.central-server")
+			exit(1)
+		elif action == "restart":
+			if not srv_status(True):
+				not_running()
+
+			if not setting("multihost") and not secure_port(daemon_port()):
+				fail_server_check()
+
+			print "Restarting Ford servers..."
+
+			port = stophost(None, ".ford.central-server")
+			if setting("multihost"):
+				multihost(port)
+			else:
+				host(port, True)
+
+			exit(1)
+		elif action == "status":
+			srv_status()
+			exit(1)
 		else:
 			print "Ford cannot be run as root!"
 			exit(1)
@@ -157,16 +245,52 @@ def main():
 		elif action == "import":
 			cdnimport(opts.force)
 			exit(0)
+		elif action == "start":
+			if srv_status(True):
+				not_running(True)
+			if not opts.skip or secure_port(int(opts.port)):
+				fail_sudo_server_check()
+			setting("hosted", True)
+			setting("multihost", False)
+			print "Starting Ford servers..."
+			host(opts.port, True)
+			exit(0)
+		elif action == "restart":
+			if not srv_status(True):
+				not_running()
+			if setting("multihost"):
+				fail_sudo_server_check()
+			else:
+				check_port()
+
+			print "Restarting Ford servers..."
+			port = stophost(None, ".ford.central-server")
+			host(port, True)
+			exit(0)
+		elif action == "stop":
+			if setting("multihost"):
+				fail_sudo_server_check()
+			else:
+				check_port()
+			setting("hosted", False)
+			setting("multihost", False)
+			print "Stopping Ford servers..."
+			stophost(None, ".ford.central-server")
+			exit(0)
+		elif action == "status":
+			if setting("multihost"):
+				fail_sudo_server_check()
+			else:
+				check_port()
+			srv_status()
+			exit(0)
 		elif action == "serve":
-			if opts.port == "80":
-				print "You are attempting to run a server on port 80."
-				print "This requires sudo permissions; please rerun with sudo!"
-				exit(1)
-			subcall(["python", "-m", "SimpleHTTPServer", opts.port])
+			check_port()
+			host(opts.port, False)
 			exit(0)
 		elif action == "ssl":
 			print "You are attempting to run a server on port 443."
-			print "This requires sudo permissions; please rerun with sudo!"
+			print "This requires permissions; please rerun with sudo!"
 			exit(1)
 
 		if not action in SUPPORTED_ACTIONS:
@@ -188,6 +312,24 @@ def main():
 			utilities.printr("\n\t{0}".format(proj.lock_file), "red")
 			print "\nAnd then run your command again."
 			exit(1)
+
+
+		if action in ["host", "unhost"]:
+			if not proj.has_template():
+				pe("exception", "not_project", proj.project_dir)
+				cleanup(1, proj)
+			elif action == "host":
+				host_path = opts.destination
+				if host_path is None:
+					host_path = basename(getcwd())
+				host_project(host_path, getcwd())
+				cleanup(0, proj)
+			elif action == "unhost":
+				host_path = opts.destination
+				if host_path is None:
+					host_path = basename(getcwd())
+				unhost_project(host_path, getcwd())
+				cleanup(0, proj)
 
 		if not proj.init(opts.template, opts.force, action == "init"):
 			cleanup(1, proj)
