@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from optparse import OptionParser
 from os.path import abspath, isdir, basename
-from os import chdir, getuid, getlogin, getcwd
+from os import chdir, getuid, getcwd
+from pwd import getpwuid
 from sys import exit, argv
 from ford.utilities import mkdirp
 from ford import utilities
@@ -300,10 +301,12 @@ def main():
 
 		proj = Project(directory, opts.build)
 
-		did_lock, lock_text = proj.lock(getlogin(), getcwd(), cmd)
+		uname = getpwuid(getuid())[0]
+
+		did_lock, lock_text = proj.lock(uname, getcwd(), cmd)
 		if not did_lock and opts.smash:
 			proj.unlock()
-			did_lock, lock_text = proj.lock(getlogin(), getcwd(), cmd)
+			did_lock, lock_text = proj.lock(uname, getcwd(), cmd)
 
 		if not did_lock:
 			print "This project was locked!\n\n\t{0}".format(lock_text)
