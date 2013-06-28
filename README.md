@@ -34,15 +34,14 @@ These instructions are reproduced within `INSTALL.md`.
 
 ### Web installation (Recommended)
 
-Once the required software has been installed, Ford can be quickly and
-effortlessly installed or updated over the web with the following cURL:
+Ford can be quickly and effortlessly installed or updated over the web with
+the following cURL:
 
     curl https://raw.github.com/Knewton/Ford/master/web_install.sh | sh
 
 ### Source installation
 
-Once the required software has been installed, Ford can be installed and
-updated by running:
+Ford can be installed and updated from source by running:
 
     git clone github.com:/Knewton/Ford
     cd Ford
@@ -50,6 +49,13 @@ updated by running:
     sudo ./setup.py install
     ford upgrade
     ford import
+
+### Updating the tool
+
+Once ford has been installed successfully, you can keep it up to date simply by
+running:
+
+    ford latest
 
 ### Important note about Gems
 
