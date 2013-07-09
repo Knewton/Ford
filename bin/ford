@@ -15,7 +15,7 @@ from ford.project import JSONError, UpdateError
 from ford.utilities import printr
 from ford.utilities import print_event as pe
 
-SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup", "mkcert"
+SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup", "mkcert", 
 	"init", "update", "build", "host", "unhost", "status", "start", "stop",
 	"restart", "server", "ssl"]
 
