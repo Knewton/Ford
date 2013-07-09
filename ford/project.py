@@ -949,6 +949,10 @@ class Project(object):
 		return self.manifest[name]
 
 	def _compile(self, ftype, name):
+		if call(["which", "juicer"]) != 0:
+			printr("[ ERROR ] juicer is not installed!", "red")
+			self.exit(1)
+
 		cmd = ["juicer", "merge", "--force", "--document-root",
 				"'{0}'".format(self.project_dir)]
 		src_file = "{0}/{2}.{1}".format(self.output_dir, ftype, name)
@@ -976,7 +980,7 @@ class Project(object):
 		else:
 			pe("exception", "compiling", src_file)
 			print resp
-			exit(1)
+			self.exit(1)
 
 	def _expand_component_group(self, component):
 		cid = component["id"]
@@ -1885,6 +1889,12 @@ class Project(object):
 					copy_template = True
 					template_change = True
 					force = True
+		else:
+			template = DEFAULT_TEMPLATE
+			copy_template = True
+			if not explicit:
+				pe("exception", "not_project", self.project_dir)
+				return False
 
 		pe("action", "init", self.project_dir)
 		has_any = False

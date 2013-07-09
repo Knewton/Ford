@@ -15,7 +15,7 @@ from ford.project import JSONError, UpdateError
 from ford.utilities import printr
 from ford.utilities import print_event as pe
 
-SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup", "mkcert", 
+SUPPORTED_ACTIONS = ["import", "upgrade", "latest", "selfup", "mkcert",
 	"init", "update", "build", "host", "unhost", "status", "start", "stop",
 	"restart", "server", "ssl"]
 
@@ -316,7 +316,6 @@ def main():
 			print "\nAnd then run your command again."
 			exit(1)
 
-
 		if action in ["host", "unhost"]:
 			if not proj.has_template():
 				pe("exception", "not_project", proj.project_dir)
@@ -338,7 +337,7 @@ def main():
 			cleanup(1, proj)
 
 		if action == "init":
-			cleanup(1, proj)
+			cleanup(0, proj)
 
 		# Set the project caching options
 		proj.from_cache = not opts.fresh
