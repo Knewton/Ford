@@ -4,7 +4,8 @@
 
 ### Requirements
 * Python 2.6+
-* Ruby 1.8.7+
+* Ruby 1.9+
+* Java
 * RubyGems 1.3.7+
 
 ### Web installation (Recommended)

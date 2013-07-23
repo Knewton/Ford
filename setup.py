@@ -15,10 +15,17 @@ setup(
 			"scripts/*"
 		]
 	},
-	scripts = ["bin/ford", "bin/ssl_server_ford", "bin/server_ford"],
+	scripts = [
+		"bin/ford",
+		"bin/ssl_server_ford",
+		"bin/server_ford",
+	],
 	install_requires = [
 		"BeautifulSoup==3.2.0",
 		"termcolor==1.1.0",
-		"Jinja2==2.7.0"]
+		"Jinja2==2.7.0",
+		"CoffeeScript==1.0.5",
+		"pyOpenSSL==0.13",
+	]
 )
 
