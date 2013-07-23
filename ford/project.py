@@ -34,9 +34,12 @@ from datetime import datetime
 # Third-party
 #------------------------------
 
+import coffeescript
 from BeautifulSoup import BeautifulSoup, Tag
 from coffeescript import compile as coffeecc
 from jinja2 import Template
+
+COFFEE_SCRIPT_JS = join(dirname(coffeescript.__file__), 'coffee-script.js')
 
 #------------------------------
 # Project
@@ -1913,7 +1916,7 @@ class Project(object):
 		if merge_directories(SCRIPT_DIR, self.project_dir, None, True, True):
 			has_any = True
 
-		coffeeSrc = join(USER_DIR, "coffee-script.js")
+		coffeeSrc = COFFEE_SCRIPT_JS
 		coffeeDest = join(self.project_dir, "coffee-script.js")
 
 		pe("overwrite", coffeeSrc, coffeeDest)
