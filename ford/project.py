@@ -970,7 +970,7 @@ class Project(object):
 		resp = call(cmd, sout=True)
 
 		# Juicer doesn't fail on failure; test for such cases
-		is_error = "[ERROR]" in resp
+		is_error = "[ERROR]" in resp or "Errno::ENOENT" in resp
 
 		if not is_error:
 			if self._manifest_flag("rawsrc") or self.rawsrc:
