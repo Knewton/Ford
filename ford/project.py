@@ -1893,7 +1893,6 @@ class Project(object):
 					template_change = True
 					force = True
 		else:
-			template = DEFAULT_TEMPLATE
 			copy_template = True
 			if not explicit:
 				pe("exception", "not_project", self.project_dir)
