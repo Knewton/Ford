@@ -88,6 +88,7 @@ def optparse():
 			"             Use --output to change build directory.",
 			"             Use --no-cache to skip using the Ford cache.",
 			"             Use --update-cache to update resource in the cache.",
+			"             Use --name-buster to use the resource rename mode.",
 			"    serve:   Runs a simple web server.",
 			"             Use --port to specify the port (default: 80).",
 			"             Requires sudo if port 80 is used!",
@@ -136,6 +137,9 @@ def optparse():
 						help="Remove existing project lock. (Not recommended)")
 	parser.add_option("-d", "--destination", dest="destination",
 						help="Used to override default project server names.")
+	parser.add_option("-a", "--name-buster", dest="namebuster",
+						action="store_true",
+						help="Names the (j/cs)s files the current time.")
 	return parser
 
 def cleanup(code, proj):
@@ -347,7 +351,8 @@ def main():
 			proj.update()
 		else:
 			proj.build(abspath(opts.output),
-					opts.skip, opts.embed, opts.rawsrc, opts.clean)
+					opts.skip, opts.embed, opts.rawsrc, opts.clean,
+					opts.namebuster)
 
 		cleanup(0, proj)
 	except (JSONError, UpdateError):

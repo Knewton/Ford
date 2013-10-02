@@ -887,6 +887,7 @@ class Project(object):
 		self.held_resources = {}
 		self.tmp_paths = {}
 		self.pending_resources = 0
+		self.namebust = False
 		self.content = None
 		self.manifest = None
 		self.build_project = False
@@ -1046,11 +1047,17 @@ class Project(object):
 		pe("action", "build", self.current_manifest)
 
 		js_path, css_path, html_path = [None] * 3
-		jsn, csn = ["application"] * 2
+		if self.namebust:
+			default_name = str(time())
+		else:
+			default_name = "application"
+
+		jsn, csn = [default_name] * 2
+
 		htn = "index"
+		path = "{0}/application".format(self.output_dir)
 		if "output" in self.manifest:
 			op = self.manifest["output"]
-			path = "{0}/application".format(self.output_dir)
 			if not (isinstance(op, basestring) or isinstance(op, str)):
 				if "js" in op:
 					jsn = op["js"]
@@ -1065,7 +1072,8 @@ class Project(object):
 				css_path = "{0}/{1}".format(self.output_dir, csn)
 				html_path = "{0}/{1}".format(self.output_dir, htn)
 		else:
-			path = "{0}/application".format(self.output_dir)
+			js_path = "{0}/{1}".format(self.output_dir, jsn)
+			css_path = "{0}/{1}".format(self.output_dir, csn)
 
 		has_css, has_js = False, False
 		if css_path is not None:
@@ -1221,9 +1229,13 @@ class Project(object):
 					rp.append(read_file(d))
 					pe("embed", d, index_page)
 				elif self._manifest_flag("rawsrc") or self.rawsrc:
-					script["src"] = "{1}.js?_={0}".format(cb, jsn)
+					script["src"] = "{0}.js".format(jsn)
+					if not self.namebust:
+						script["src"] += "?_={0}".format(cb)
 				else:
-					script["src"] = "{1}.min.js?_={0}".format(cb, jsn)
+					script["src"] = "{0}.min.js".format(jsn)
+					if not self.namebust:
+						script["src"] += "?_={0}".format(cb)
 				bootstrap.parent.insert(index_idx + 1, script)
 
 			# Package the scripts first, cause we prepend the js def later
@@ -1260,9 +1272,13 @@ class Project(object):
 					style["rel"] = "stylesheet"
 					style["type"] = "text/css"
 					if self._manifest_flag("rawsrc") or self.rawsrc:
-						style["href"] = "{1}.css?_={0}".format(cb, csn)
+						style["href"] = "{0}.css".format(csn)
+						if not self.namebust:
+							style["href"] += "?_={0}".format(cb)
 					else:
-						style["href"] = "{1}.min.css?_={0}".format(cb, csn)
+						style["href"] = "{0}.min.css".format(csn)
+						if not self.namebust:
+							style["href"] += "?_={0}".format(cb)
 				bootstrap.parent.insert(index_idx + 1, style)
 
 			# Remove the bootstrap tag
@@ -1963,12 +1979,13 @@ class Project(object):
 		self.build_project = True
 		self._handle_project_dependencies()
 
-	def build(self, out_dir, skip=False, embed=False, rawsrc=False, cln=False):
+	def build(self, out_dir, skip, embed, rawsrc, cln, namebust):
 		self.current_manifest = self.project_manifest
 		self.manifest = get_json(self.project_manifest)
 		self.single_file = embed
 		self.rawsrc = rawsrc
 		self.output_dir = realpath(out_dir)
+		self.namebust = namebust
 		rm_output = cln
 		if not rm_output:
 			if "clean_build" in self.manifest and self.manifest["clean_build"]:
