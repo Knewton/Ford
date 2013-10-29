@@ -1774,12 +1774,13 @@ class Project(object):
 			self.exit(1)
 
 		lib_manifest = join(self.project_dir, lib_path(lib), "manifest.json")
-		cache_manifest = join(CACHE_DIR, lib, "manifest.json")
-		if write_manifest:
-			raw_json = dumps(manifest)
-			write_file(lib_manifest, raw_json)
-			if self.from_cache:
-				write_file(cache_manifest, raw_json)
+		if do_update:
+			cache_manifest = join(CACHE_DIR, lib, "manifest.json")
+			if write_manifest:
+				raw_json = dumps(manifest)
+				write_file(lib_manifest, raw_json)
+				if self.from_cache:
+					write_file(cache_manifest, raw_json)
 		return lib_manifest
 
 	def _include_library_resource(self, lib, resource):
