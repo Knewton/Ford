@@ -974,6 +974,11 @@ class Project(object):
 		is_error = "[ERROR]" in resp or "Errno::ENOENT" in resp
 
 		if not is_error:
+			if ftype == "css":
+				base_css = read_file(out_file)
+				write_file(out_file,
+					base_css.replace(self.output_dir + "/data:", "data:"))
+
 			if self._manifest_flag("rawsrc") or self.rawsrc:
 				pe("warning", "compiling", src_file)
 				copyfile(out_file, src_file)
@@ -1703,8 +1708,9 @@ class Project(object):
 						fc = fc.replace(fx, "images")
 				for m in findall('url\(([^)]+)\)', fc):
 					u = m.replace("'", "").replace('"', "")
-					if "images/" not in u:
-						u = "images/{0}".format(u)
+					if u[0:5] != "data:":
+						if "images/" not in u:
+							u = "images/{0}".format(u)
 					fc = fc.replace(m, u)
 				# Strip strings from images
 				write_file(df, fc)
