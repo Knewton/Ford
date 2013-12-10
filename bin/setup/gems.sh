@@ -18,3 +18,5 @@ gem_install juicer
 juicer install yui_compressor
 juicer install closure_compiler
 juicer install jslint
+
+gem_install compass
