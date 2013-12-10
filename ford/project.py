@@ -1352,6 +1352,10 @@ class Project(object):
 				if "styles" in app and len(app["styles"]) > 0:
 					for s in app["styles"]:
 						self.content["css"].append("{0}.css".format(s))
+				if "static" in app and len(app["static"]) > 0:
+					for s in app["static"]:
+						copyfile("{0}/{1}.html".format(self.project_dir, s),
+								"{0}/{1}.html".format(self.output_dir, s))
 			self._complete()
 		self._clean_tmp()
 		pe("success", "build")
