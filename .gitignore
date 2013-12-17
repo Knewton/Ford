@@ -1,6 +1,7 @@
 # compiled code
 *.pyc
 
+
 # swap files
 *.swp
 *.swo
