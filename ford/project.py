@@ -972,6 +972,7 @@ class Project(object):
 
 		# Juicer doesn't fail on failure; test for such cases
 		is_error = "[ERROR]" in resp or "Errno::ENOENT" in resp
+		print resp
 
 		if not is_error:
 			if ftype == "css":
@@ -1230,7 +1231,10 @@ class Project(object):
 				script["type"] = "text/javascript"
 				if use_single:
 					script.append("$FRD" + str(len(rp)))
-					d = "{0}.min.js".format(path)
+					if self._manifest_flag("rawsrc") or self.rawsrc:
+						d = "{0}.js".format(path)
+					else:
+						d = "{0}.min.js".format(path)
 					rp.append(read_file(d))
 					pe("embed", d, index_page)
 				elif self._manifest_flag("rawsrc") or self.rawsrc:
@@ -1265,7 +1269,10 @@ class Project(object):
 
 			if has_css:
 				if use_single:
-					d = "{0}.min.css".format(path)
+					if self._manifest_flag("rawsrc") or self.rawsrc:
+						d = "{0}.css".format(path)
+					else:
+						d = "{0}.min.css".format(path)
 					style = Tag(index_html, "style")
 					style["media"] = "screen, print"
 					style["type"] = "text/css"
